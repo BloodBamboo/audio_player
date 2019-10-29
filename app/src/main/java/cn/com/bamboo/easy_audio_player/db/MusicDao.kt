@@ -12,6 +12,9 @@ interface MusicDao : BaseDao<Music> {
     fun loadMusicById(id: Int): Music
 
 
-    @Query("select * from Music where form_id = :formId")
+    @Query("select * from Music where form_id = :formId order by name")
     fun loadMusicByFormId(formId: Int): DataSource.Factory<Int, Music>
+
+    @Query("select * from Music where form_id = :formId order by name")
+    fun loadMusicListByFormId(formId: Int): List<Music>
 }

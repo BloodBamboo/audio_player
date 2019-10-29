@@ -6,6 +6,9 @@ import androidx.recyclerview.widget.DiffUtil
 import cn.com.bamboo.easy_audio_player.R
 import cn.com.bamboo.easy_audio_player.vo.Music
 
+/**
+ * 歌单列表adapter
+ */
 class MusicAdapter(context: Context) :
     BasePagedListAdapter<Music, BasePagedListVieHolder<Music>>(
         context, R.layout.layout_music_item, differ

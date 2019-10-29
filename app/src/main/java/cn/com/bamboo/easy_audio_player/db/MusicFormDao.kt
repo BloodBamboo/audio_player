@@ -13,4 +13,7 @@ interface MusicFormDao : BaseDao<MusicForm> {
 
     @Query("select * from music_form")
     fun loadAll(): DataSource.Factory<Int, MusicForm>
+
+    @Query("select * from music_form")
+    fun loadAllList(): List<MusicForm>
 }

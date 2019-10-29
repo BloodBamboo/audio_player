@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android">
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <data>
         <variable
@@ -7,16 +8,146 @@
             type="cn.com.bamboo.easy_audio_player.view_model.MusicViewModel" />
     </data>
 
-    <LinearLayout
-        android:orientation="vertical"
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
+        <include
+            android:id="@+id/layout_toolbar"
+            layout="@layout/toolbar_title_center" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recycler_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_above="@id/layout_menu"
+            android:layout_below="@id/layout_toolbar"
+            android:scrollbars="vertical"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+        <LinearLayout
+            android:id="@+id/layout_menu"
+        android:layout_width="match_parent"
+            android:layout_height="40dp"
+            android:layout_above="@id/text_music_name"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:onClick="@{musicViewModel::onRefreshForm}"
+                android:text="刷新" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:onClick="@{musicViewModel::onMusicForm}"
+                android:text="歌单" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:onClick="@{musicViewModel::onMusic}"
+                android:text="音乐" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:onClick="@{musicViewModel::onTiming}"
+                android:text="定时" />
+        </LinearLayout>
+
         <TextView
-            android:id="@+id/text"
-            android:layout_width="wrap_content"
+            android:id="@+id/text_music_name"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@{musicViewModel.show}"
+            android:layout_above="@id/layout_music_config"
+            android:gravity="center"
+            android:padding="@dimen/medium_margin"
+            android:text="@{musicViewModel.title}"
+            android:textColor="@color/text_primary"
+            android:textSize="@dimen/first_text_size"
             />
-    </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/layout_music_config"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_above="@id/layout_progress"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:id="@+id/image_prev"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:onClick="@{musicViewModel::onPrev}"
+                android:padding="@dimen/normal_margin"
+                android:src="@mipmap/ic_prev" />
+
+            <ImageView
+                android:id="@+id/image_play"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:onClick="@{musicViewModel::onPlay}"
+                android:padding="@dimen/normal_margin"
+                android:src="@{musicViewModel.play?@drawable/ic_play:@drawable/ic_pause}" />
+
+            <ImageView
+                android:id="@+id/image_next"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:onClick="@{musicViewModel::onNext}"
+                android:padding="@dimen/normal_margin"
+                android:src="@mipmap/ic_next" />
+        </LinearLayout>
+
+        <RelativeLayout
+            android:id="@+id/layout_progress"
+            android:layout_width="match_parent"
+            android:layout_height="25dp"
+            android:layout_alignParentBottom="true">
+
+            <TextView
+                android:id="@+id/text_start_time"
+                android:layout_width="60dp"
+                android:layout_height="match_parent"
+                android:layout_alignParentLeft="true"
+                android:gravity="center"
+                android:text="@{musicViewModel.playTime}"
+                android:textColor="@color/text_primary"
+                android:textSize="15dp" />
+
+            <SeekBar
+                android:id="@+id/progress_bar"
+                android:layout_width="match_parent"
+                android:layout_height="10dp"
+                android:layout_centerVertical="true"
+                android:layout_toLeftOf="@id/text_end_time"
+                android:layout_toRightOf="@id/text_start_time"
+                android:max="100"
+                android:progress="@{musicViewModel.progress}" />
+
+            <TextView
+                android:id="@+id/text_end_time"
+                android:layout_width="60dp"
+                android:layout_height="match_parent"
+                android:layout_alignParentRight="true"
+                android:gravity="center"
+                android:text="@{musicViewModel.playDurationTime}"
+                android:textColor="@color/text_primary"
+                android:textSize="15dp" />
+        </RelativeLayout>
+    </RelativeLayout>
 </layout>

@@ -13,4 +13,6 @@ interface PlayerRecordDao : BaseDao<PlayerRecord> {
 
     @Query("select * from player_record")
     fun loadPlayRecordAll(): DataSource.Factory<Int, PlayerRecord>
+
+
 }

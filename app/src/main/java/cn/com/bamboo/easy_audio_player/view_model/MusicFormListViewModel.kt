@@ -6,6 +6,7 @@ import androidx.paging.LivePagedListBuilder
 import androidx.paging.PagedList
 import cn.com.bamboo.easy_audio_player.MusicApp
 import cn.com.bamboo.easy_audio_player.vo.Music
+import cn.com.bamboo.easy_common.util.ExecuteOnceMaybeObserver
 import cn.com.bamboo.easy_common.util.RxJavaHelper
 import cn.com.edu.hnzikao.kotlin.base.BaseViewModel
 import io.reactivex.Maybe
@@ -26,7 +27,13 @@ class MusicFormListViewModel(application: Application) : BaseViewModel(applicati
             try {
                 val musics = ArrayList<Music>()
                 for (path in list) {
-                    musics.add(Music(name = path.substringAfter("/"), path = path, formId = formId))
+                    musics.add(
+                        Music(
+                            name = path.substringAfterLast("/"),
+                            path = path,
+                            formId = formId
+                        )
+                    )
                 }
                 dao.insertItems(musics)
                 it.onSuccess("添加成功")
@@ -36,8 +43,26 @@ class MusicFormListViewModel(application: Application) : BaseViewModel(applicati
             }
         }.compose(RxJavaHelper.schedulersTransformerMaybe())
             .subscribe {
-                setMessage(it)
+                ExecuteOnceMaybeObserver<String>({
+                    setMessage(it)
+                })
             }
+    }
 
+    fun removeItem(item: Music) {
+        Maybe.create<String> {
+            try {
+                dao.deleteItem(item)
+                it.onSuccess("删除成功")
+            } catch (e: Exception) {
+                e.printStackTrace()
+                it.onSuccess("删除失败")
+            }
+        }.compose(RxJavaHelper.schedulersTransformerMaybe())
+            .subscribe {
+                ExecuteOnceMaybeObserver<String>({
+                    setMessage(it)
+                })
+            }
     }
 }

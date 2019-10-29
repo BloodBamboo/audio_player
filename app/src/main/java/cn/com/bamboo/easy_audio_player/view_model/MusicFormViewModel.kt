@@ -14,7 +14,7 @@ import io.reactivex.Maybe
 
 class MusicFormViewModel(application: Application) : BaseViewModel(application) {
     var showFormDialog: MutableLiveData<Boolean> = MutableLiveData()
-    var formResult: MutableLiveData<String> = MutableLiveData()
+//    var formResult: MutableLiveData<String> = MutableLiveData()
     val formList = LivePagedListBuilder(
         getApplication<MusicApp>().database.musicFormDao().loadAll(),
         PagedList.Config.Builder().setPageSize(20)
@@ -23,7 +23,7 @@ class MusicFormViewModel(application: Application) : BaseViewModel(application) 
     ).build()
 
 
-    fun onCreateForm(view: View) {
+    fun onCreateForm() {
         showFormDialog.value = true
     }
 
@@ -39,7 +39,24 @@ class MusicFormViewModel(application: Application) : BaseViewModel(application) 
         }.compose(RxJavaHelper.schedulersTransformerMaybe())
             .subscribe(
                 ExecuteOnceMaybeObserver<String>({
-                    formResult.value = it
+                    setMessage(it)
+                })
+            )
+    }
+
+    fun removeItem(item: MusicForm) {
+        Maybe.create<String> {
+            try {
+                getApplication<MusicApp>().database.musicFormDao()
+                    .deleteItem(item)
+            } catch (e: Exception) {
+                it.onSuccess("删除失败" + e.message)
+            }
+            it.onSuccess("删除成功")
+        }.compose(RxJavaHelper.schedulersTransformerMaybe())
+            .subscribe(
+                ExecuteOnceMaybeObserver<String>({
+                    setMessage(it)
                 })
             )
     }

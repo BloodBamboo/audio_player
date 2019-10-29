@@ -7,6 +7,7 @@ import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 
 @Entity(
+    tableName = "music",
     foreignKeys = [ForeignKey(
         entity = MusicForm::class,
         parentColumns = ["id"],

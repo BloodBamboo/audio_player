@@ -4,6 +4,7 @@ import androidx.annotation.NonNull
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "player_record", foreignKeys = [
@@ -13,18 +14,12 @@ import androidx.room.ForeignKey
             childColumns = ["form_id"],
             onUpdate = ForeignKey.CASCADE,
             onDelete = ForeignKey.CASCADE
-        ),
-        ForeignKey(
-            entity = Music::class,
-            parentColumns = ["id"],
-            childColumns = ["music_id"],
-            onUpdate = ForeignKey.CASCADE,
-            onDelete = ForeignKey.CASCADE
         )
-    ],
-    primaryKeys = ["form_id", "music_id"]
+    ]
 )
 data class PlayerRecord(
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
     @ColumnInfo(name = "form_id")
     @NonNull
     val formId: Int,
@@ -34,5 +29,8 @@ data class PlayerRecord(
     @NonNull
     val description: String,
     @NonNull
-    val progress: Long
+    val progress: Int,
+    @ColumnInfo(name = "record_time")
+    @NonNull
+    val recordTime: Long
 )

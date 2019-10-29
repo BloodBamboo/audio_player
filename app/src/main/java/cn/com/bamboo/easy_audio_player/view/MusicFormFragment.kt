@@ -4,6 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.EditText
+import androidx.core.view.get
 import androidx.lifecycle.Observer
 import cn.com.bamboo.easy_audio_player.BR
 import cn.com.bamboo.easy_audio_player.R
@@ -15,6 +16,9 @@ import cn.com.edu.hnzikao.kotlin.base.BaseViewModelFragment
 import org.jetbrains.anko.alert
 import org.jetbrains.anko.toast
 
+/**
+ * 歌单列表
+ */
 class MusicFormFragment : BaseViewModelFragment<FragmentMusicFormBinding, MusicFormViewModel>() {
 
     lateinit var adapter: MusicFormAdapter
@@ -37,6 +41,13 @@ class MusicFormFragment : BaseViewModelFragment<FragmentMusicFormBinding, MusicF
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        setTitleAndBackspace("歌单列表")
+        toolbar?.inflateMenu(R.menu.menu_item)
+        toolbar?.menu!![0].title = "新建"
+        toolbar?.setOnMenuItemClickListener {
+            viewModel.onCreateForm()
+            return@setOnMenuItemClickListener true
+        }
         viewModel.showFormDialog.observe(this, Observer {
             activity?.alert {
                 this.message = "歌单名称"
@@ -55,15 +66,18 @@ class MusicFormFragment : BaseViewModelFragment<FragmentMusicFormBinding, MusicF
                 }
             }?.show()
         })
-        viewModel.formResult.observe(this, Observer {
-            activity?.toast(it)
-        })
         adapter = MusicFormAdapter(this.context!!)
         adapter.itemViewOnClick = { item, position ->
             item?.let {
                 startActivity(Intent(context, MusicListActivity::class.java).apply {
                     putExtra(IntentKey.FORM_ID, it.id)
+                    putExtra(IntentKey.FORM_NAME, it.name)
                 })
+            }
+        }
+        adapter.itemViewOnLongOnClick = { item, position ->
+            item?.let {
+                viewModel.removeItem(it)
             }
         }
         binding.recyclerView.adapter = adapter

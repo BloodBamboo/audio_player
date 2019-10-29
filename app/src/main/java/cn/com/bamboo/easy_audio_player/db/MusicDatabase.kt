@@ -12,11 +12,11 @@ import cn.com.bamboo.easy_audio_player.vo.PlayerRecord
         MusicForm::class,
         PlayerRecord::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class MusicDatabase : RoomDatabase() {
     abstract fun musicDao(): MusicDao
     abstract fun musicFormDao(): MusicFormDao
-    abstract fun PlayerRecordDao(): PlayerRecordDao
+    abstract fun playerRecordDao(): PlayerRecordDao
 }

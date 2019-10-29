@@ -15,6 +15,7 @@ open abstract class BasePagedListAdapter<T, VH : BasePagedListVieHolder<T>>(
 ) : PagedListAdapter<T, VH>(diff) {
 
     var itemViewOnClick: ((item: T?, position: Int) -> Unit)? = null
+    var itemViewOnLongOnClick: ((item: T?, position: Int) -> Unit)? = null
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
         return BasePagedListVieHolder<T>(
@@ -28,7 +29,15 @@ open abstract class BasePagedListAdapter<T, VH : BasePagedListVieHolder<T>>(
 
     override fun onBindViewHolder(holder: VH, position: Int) {
         holder.itemView.setOnClickListener {
-            itemViewOnClick?.run { this(getItem(position), position) }
+            itemViewOnClick?.run {
+                this(getItem(holder.adapterPosition), holder.adapterPosition) }
+        }
+        holder.itemView.setOnLongClickListener {
+            itemViewOnLongOnClick?.run {
+                this(getItem(holder.adapterPosition), holder.adapterPosition)
+                return@setOnLongClickListener true
+            }
+            return@setOnLongClickListener false
         }
         convert(holder, getItem(position), position)
     }
