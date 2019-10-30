@@ -23,6 +23,9 @@ interface PlayerConfig {
          */
         val STATE_ENDED
             get() = 4
+
+        val STATE_PREPARE
+            get() = 5
     }
 
     fun setData(path: String)

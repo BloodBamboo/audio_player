@@ -118,7 +118,7 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
         override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {
             playbackState.postValue(state ?: EMPTY_PLAYBACK_STATE)
             when (state?.state) {
-                PlaybackStateCompat.STATE_PAUSED -> {
+                PlaybackStateCompat.STATE_PAUSED,PlaybackStateCompat.STATE_NONE  -> {
                     play.set(true)
                     updatePosition = false
                 }
@@ -176,13 +176,8 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
         .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, 0)
         .build()
 
-    override fun onStart() {
-        super.onStart()
-        mediaBrowser.connect()
-    }
-
-    override fun onStop() {
-        super.onStop()
+    override fun onDestroy() {
+        super.onDestroy()
         mediaBrowser.disconnect()
     }
 
@@ -201,22 +196,26 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
             ComponentName(context, MusicService::class.java),
             mediaBrowserConnectionCallback, null
         )
+        mediaBrowser.connect()
     }
 
     private fun checkPlaybackPosition(): Boolean {
         return handler.postDelayed({
-            playbackState.value?.let {
-                if (it.state == PlaybackStateCompat.STATE_PLAYING) {
-                    val postion = it.currentPlayBackPosition
-                    playTime.set(timestampToMSS(postion))
-                    nowPlaying.value?.let {
-                        progress.set((postion.toFloat() / it.getLong(MediaMetadataCompat.METADATA_KEY_DURATION) * 100).toInt())
-                    }
+            if (playbackState.value != null &&
+                nowPlaying.value != null &&
+                playbackState.value!!.state == PlaybackStateCompat.STATE_PLAYING
+            ) {
+                val pos = playbackState.value!!.currentPlayBackPosition
+                val duration = nowPlaying.value!!.getLong(MediaMetadataCompat.METADATA_KEY_DURATION)
+                if (pos <= duration) {
+                    playTime.set(timestampToMSS(pos))
                 }
-            }
+                progress.set((pos.toFloat() / duration * 100).toInt())
+                }
 
-            if (updatePosition)
+            if (updatePosition) {
                 checkPlaybackPosition()
+            }
         }, POSITION_UPDATE_INTERVAL_MILLIS)
     }
 
@@ -254,7 +253,7 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
     }
 
     fun onTiming(view: View) {
-
+        mediaController.transportControls.stop()
     }
 
     fun onPrev(view: View) {

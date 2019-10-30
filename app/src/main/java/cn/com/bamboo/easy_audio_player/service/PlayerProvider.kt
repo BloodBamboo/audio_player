@@ -25,6 +25,7 @@ class PlayerProvider(val callback: PlayerCallback) : PlayerConfig {
 
     override fun prepare() {
         mediaPlayer.prepare()
+        currentState = PlayerConfig.STATE_PREPARE
     }
 
     override fun play() {
@@ -52,14 +53,17 @@ class PlayerProvider(val callback: PlayerCallback) : PlayerConfig {
     override fun release() {
         mediaPlayer.stop()
         mediaPlayer.release()
+        currentState = PlayerConfig.STATE_IDLE
     }
 
     override fun reset() {
         mediaPlayer.reset()
+        currentState = PlayerConfig.STATE_IDLE
     }
 
     override fun stop() {
         mediaPlayer.stop()
+        currentState = PlayerConfig.STATE_IDLE
     }
 
     override fun getCurrentPosition(): Long {

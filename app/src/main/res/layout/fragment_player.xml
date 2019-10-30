@@ -91,8 +91,8 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:onClick="@{musicViewModel::onPrev}"
-                android:padding="@dimen/normal_margin"
-                android:src="@mipmap/ic_prev" />
+                android:padding="5dp"
+                android:src="@drawable/exo_controls_previous" />
 
             <ImageView
                 android:id="@+id/image_play"
@@ -100,8 +100,8 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:onClick="@{musicViewModel::onPlay}"
-                android:padding="@dimen/normal_margin"
-                android:src="@{musicViewModel.play?@drawable/ic_play:@drawable/ic_pause}" />
+                android:padding="5dp"
+                android:src="@{musicViewModel.play?@drawable/exo_icon_play:@drawable/exo_icon_pause}" />
 
             <ImageView
                 android:id="@+id/image_next"
@@ -109,8 +109,8 @@
                 android:layout_height="match_parent"
                 android:layout_weight="1"
                 android:onClick="@{musicViewModel::onNext}"
-                android:padding="@dimen/normal_margin"
-                android:src="@mipmap/ic_next" />
+                android:padding="5dp"
+                android:src="@drawable/exo_icon_next" />
         </LinearLayout>
 
         <RelativeLayout
