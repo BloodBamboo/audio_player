@@ -62,7 +62,7 @@
                 android:layout_weight="1"
                 android:gravity="center"
                 android:onClick="@{musicViewModel::onTiming}"
-                android:text="定时" />
+                android:text="@{musicViewModel.timingText}" />
         </LinearLayout>
 
         <TextView
@@ -125,6 +125,7 @@
                 android:layout_height="match_parent"
                 android:layout_alignParentLeft="true"
                 android:gravity="center"
+                android:inputType="number"
                 android:text="@{musicViewModel.playTime}"
                 android:textColor="@color/text_primary"
                 android:textSize="15dp" />

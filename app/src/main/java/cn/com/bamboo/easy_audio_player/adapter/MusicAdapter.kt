@@ -21,6 +21,7 @@ class MusicAdapter(context: Context) :
 
             override fun areContentsTheSame(oldItem: Music, newItem: Music): Boolean {
                 return oldItem.name == newItem.name
+                        && oldItem.path == newItem.path
             }
         }
     }

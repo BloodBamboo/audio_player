@@ -23,6 +23,4 @@ interface BaseDao<T> {
     //删除item
     @Delete
     fun deleteItem(t: T)
-
-
 }

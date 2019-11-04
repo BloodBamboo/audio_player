@@ -78,6 +78,8 @@ class MusicService : MediaBrowserServiceCompat() {
 
     override fun onDestroy() {
         super.onDestroy()
+        Log.e("===", "service_onDestroy")
+        saveCurrentPlayer()
         mediaSessionCompat.run {
             isActive = false
             release()
@@ -125,19 +127,42 @@ class MusicService : MediaBrowserServiceCompat() {
             playItem(id)
         }
 
+        override fun onPlayFromMediaId(musicId: String?, extras: Bundle?) {
+            val progress = extras?.getLong(IntentKey.PLAYER_RECORD_PROGRESS_LONG)
+            musicProvider.loadMusic(musicId!!) {
+                val index = musicList?.indexOf(it)
+                index?.run {
+                    currentMusic = this
+                    player.setData(it.path)
+                    player.prepare()
+                    progress?.run {
+                        player.seekTo(this)
+                    }
+                    musicProvider.savePlayRecord(it.formId, it.id, player.getCurrentPosition())
+                    mediaSessionCompat.setPlaybackState(
+                        getPlaybackStateCompat(
+                            mapPlaybackState(player.getState()),
+                            player.getCurrentPosition()
+                        )
+                    )
+                }
+            }
+        }
+
         override fun onSkipToNext() {
+            saveCurrentPlayer()
             onSkipToQueueItem(currentMusic + 1.toLong())
         }
 
         override fun onSkipToPrevious() {
+            saveCurrentPlayer()
             onSkipToQueueItem(currentMusic - 1.toLong())
         }
 
         override fun onPause() {
-            super.onPause()
-            Log.e("=====",player.getState().toString())
             when (player.getState()) {
-                PlayerConfig.STATE_PLAY -> player.pause()
+                PlayerConfig.STATE_PLAY -> pauseMusicAndSaveInfo()
+                PlayerConfig.STATE_PREPARE -> player.play()
                 PlayerConfig.STATE_PAUSE -> player.play()
                 PlayerConfig.STATE_IDLE -> onSkipToQueueItem(currentMusic.toLong())
             }
@@ -163,21 +188,22 @@ class MusicService : MediaBrowserServiceCompat() {
         }
 
         override fun onStop() {
-            player.stop()
+            player.pause()
+            saveCurrentPlayer()
             mediaSessionCompat.setPlaybackState(
-                getPlaybackStateCompat(
-                    mapPlaybackState(player.getState()),
-                    player.getCurrentPosition()
-                )
+                    getPlaybackStateCompat(
+                        mapPlaybackState(player.getState()),
+                        player.getCurrentPosition()
+                    )
             )
-
         }
 
         override fun onMediaButtonEvent(mediaButtonEvent: Intent?): Boolean {
+            Log.e("===", "onMediaButtonEvent = ${mediaButtonEvent?.action}")
             val keyEvent = mediaButtonEvent?.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT)
             if (keyEvent != null && keyEvent.action == KeyEvent.ACTION_DOWN) {
                 when (keyEvent.keyCode) {
-                    KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE -> {onPause()
+                    KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {onPause()
                         return true}
                     KeyEvent.KEYCODE_MEDIA_NEXT -> {onSkipToNext()
                         return true
@@ -240,10 +266,56 @@ class MusicService : MediaBrowserServiceCompat() {
                             }
                         }
                     }
+                }
 
+                IntentKey.LOAD_PLAYER_RECORD -> {
+                    musicProvider.getPlayerRecordList {
+                        val children = it?.mapIndexed { idx,item ->
+                            val extras = Bundle()
+                            extras.putInt(IntentKey.QUEUE_TYPE, 2)
+                            extras.putInt(IntentKey.PLAYER_RECORD_FORMID_INT, item.formId)
+                            extras.putInt(IntentKey.PLAYER_RECORD_MUSICID_INT, item.musicId)
+                            extras.putString(IntentKey.PLAYER_RECORD_DESCRIPTION_STRING, item.description)
+                            extras.putLong(IntentKey.PLAYER_RECORD_PROGRESS_LONG, item.progress)
+                            extras.putLong(IntentKey.PLAYER_RECORD_RECORDTIME_LONG, item.recordTime)
+                            var temp = MediaDescriptionCompat.Builder()
+                                .setMediaId(item.id.toString())
+                                .setTitle(item.musicName)
+                                .setSubtitle(item.formName)
+                                .setExtras(extras)
+                                .build()
+
+                            MediaSessionCompat.QueueItem(temp, idx.toLong())
+                        }
+                        children?.run {
+                            mediaSessionCompat.setQueue(this)
+                        }
+                    }
+                }
+                IntentKey.STOP_SEVER -> {
+                    pauseMusicAndSaveInfo()
+                    mediaSessionCompat.setPlaybackState(
+                        getPlaybackStateCompat(
+                            PlaybackStateCompat.STATE_NONE,
+                            player.getCurrentPosition()
+                        )
+                    )
                 }
             }
         }
+    }
+
+    private fun pauseMusicAndSaveInfo() {
+        player.pause()
+        saveCurrentPlayer()
+    }
+
+    /**
+     * 保存当前播放的音乐记录
+     */
+    private fun saveCurrentPlayer() {
+        val item = musicList!![currentMusic]
+        musicProvider.savePlayRecord(item.formId, item.id, player.getCurrentPosition())
     }
 
     private fun playItem(pos: Long) {
@@ -257,6 +329,7 @@ class MusicService : MediaBrowserServiceCompat() {
             player.setData(item.path)
             player.prepare()
             player.play()
+            musicProvider.savePlayRecord(item.formId, item.id, player.getCurrentPosition())
             mediaSessionCompat.setPlaybackState(
                 getPlaybackStateCompat(
                     mapPlaybackState(player.getState()),
@@ -264,6 +337,7 @@ class MusicService : MediaBrowserServiceCompat() {
                 )
             )
         }
+
     }
 
     private inner class MyPlayerCallback : PlayerCallback {
@@ -354,7 +428,7 @@ class MusicService : MediaBrowserServiceCompat() {
             } else {
                 null
             }
-
+            Log.e("===", "updatedState=${updatedState}")
             when (updatedState) {
                 PlaybackStateCompat.STATE_BUFFERING,
                 PlaybackStateCompat.STATE_PLAYING -> {

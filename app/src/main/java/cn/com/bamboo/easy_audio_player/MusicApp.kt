@@ -1,6 +1,7 @@
 package cn.com.bamboo.easy_audio_player
 
 import android.app.Application
+import android.content.Context
 import cn.com.bamboo.easy_audio_player.db.MusicDatabase
 import cn.com.bamboo.easy_audio_player.di.DaggerDatabaseComponent
 import com.facebook.stetho.Stetho
@@ -10,13 +11,13 @@ class MusicApp : Application() {
 
 //    var activitycount = 0
 
+
     @Inject
     lateinit var database: MusicDatabase
 
     override fun onCreate() {
         super.onCreate()
         DaggerDatabaseComponent.builder().application(this).build().inject(this)
-
         if (BuildConfig.DEBUG) {
             //chrome://inspect/#devices
             Stetho.initializeWithDefaults(this)
@@ -55,4 +56,5 @@ class MusicApp : Application() {
 //            }
 //        })
     }
+
 }

@@ -1,10 +1,12 @@
 package cn.com.bamboo.easy_audio_player.vo
 
+import android.content.Context
 import androidx.annotation.NonNull
-import androidx.room.ColumnInfo
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.PrimaryKey
+import androidx.room.*
+import cn.com.bamboo.easy_audio_player.MusicApp
+import cn.com.bamboo.easy_common.util.StringUtil
+import java.text.SimpleDateFormat
+import java.util.*
 
 @Entity(
     tableName = "player_record", foreignKeys = [
@@ -27,10 +29,33 @@ data class PlayerRecord(
     @NonNull
     val musicId: Int,
     @NonNull
-    val description: String,
+    var description: String = "",
     @NonNull
-    val progress: Int,
+    var progress: Long,
     @ColumnInfo(name = "record_time")
     @NonNull
-    val recordTime: Long
+    var recordTime: Long
 )
+
+class PlayerRecordInfo {
+    var id:Int = -1
+    @ColumnInfo(name = "form_id")
+    var formId: Int = -1
+    @ColumnInfo(name = "music_id")
+    var musicId: Int = -1
+    var description: String = ""
+    var progress: Long = 0
+    @ColumnInfo(name = "record_time")
+    var recordTime: Long = System.currentTimeMillis()
+    var formName:String = ""
+    var musicName:String = ""
+
+    fun formatProgress(context: Context):String {
+        return StringUtil.timestampToMSS(context,progress)
+    }
+
+    fun formatRecordTime():String{
+        val  format= SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+        return format.format(Date(recordTime!!))
+    }
+}

@@ -28,7 +28,7 @@ interface PlayerConfig {
             get() = 5
     }
 
-    fun setData(path: String)
+    fun setData(path: String?)
     fun play()
     fun prepare()
     fun pause()

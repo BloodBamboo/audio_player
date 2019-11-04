@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 
 open abstract class BasePagedListAdapter<T, VH : BasePagedListVieHolder<T>>(
-    private val context: Context,
+    protected val context: Context,
     val layoutId: Int,
     diff: DiffUtil.ItemCallback<T>
 ) : PagedListAdapter<T, VH>(diff) {

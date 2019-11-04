@@ -1,6 +1,7 @@
 package cn.com.bamboo.easy_audio_player.service
 
 import android.media.MediaPlayer
+import android.util.Log
 
 class PlayerProvider(val callback: PlayerCallback) : PlayerConfig {
 
@@ -18,9 +19,11 @@ class PlayerProvider(val callback: PlayerCallback) : PlayerConfig {
         }
     }
 
-    override fun setData(path: String) {
-        reset()
-        mediaPlayer.setDataSource(path)
+    override fun setData(path: String?) {
+        path?.let {
+            reset()
+            mediaPlayer.setDataSource(path)
+        }
     }
 
     override fun prepare() {

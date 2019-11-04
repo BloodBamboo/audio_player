@@ -84,7 +84,7 @@ class ControlNotificationBuilder(private val context: Context) {
         val mediaStyle = androidx.media.app.NotificationCompat.MediaStyle()
             .setCancelButtonIntent(stopPendingIntent)
             .setMediaSession(sessionToken)
-            .setShowActionsInCompactView(1)
+            .setShowActionsInCompactView(0, 1, 2)
             .setShowCancelButton(true)
 
         return builder.setContentIntent(controller.sessionActivity)

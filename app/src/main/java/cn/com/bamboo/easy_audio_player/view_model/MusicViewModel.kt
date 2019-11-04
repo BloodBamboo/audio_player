@@ -11,6 +11,7 @@ import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import android.util.Log
 import android.view.View
 import androidx.databinding.ObservableBoolean
 import androidx.databinding.ObservableField
@@ -22,7 +23,12 @@ import cn.com.bamboo.easy_audio_player.R
 import cn.com.bamboo.easy_audio_player.service.MusicService
 import cn.com.bamboo.easy_audio_player.util.IntentKey
 import cn.com.bamboo.easy_audio_player.util.currentPlayBackPosition
+import cn.com.bamboo.easy_audio_player.vo.PlayerRecordInfo
+import cn.com.bamboo.easy_common.util.RxJavaHelper
+import cn.com.bamboo.easy_common.util.StringUtil
 import cn.com.edu.hnzikao.kotlin.base.BaseViewModel
+import io.reactivex.Observable
+import java.util.concurrent.TimeUnit
 
 /**
  * 音乐播放viewModel
@@ -44,9 +50,12 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
     val playDurationTime =
         ObservableField<String>(getApplication<MusicApp>().getString(R.string.duration_unknown))
     val progress = ObservableInt(0)
+    val timingText = ObservableField<String>("定时")
 
     val formList = MutableLiveData<List<MediaSessionCompat.QueueItem>>()
     val musicList = MutableLiveData<List<MediaSessionCompat.QueueItem>>()
+    val showTiming = MutableLiveData<Boolean>()
+    var playerRecordInfo: PlayerRecordInfo? = null
 
     private lateinit var mediaId: String
 
@@ -56,6 +65,8 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
     private lateinit var mediaBrowser: MediaBrowserCompat
     private lateinit var mediaController: MediaControllerCompat
     private lateinit var mediaBrowserConnectionCallback: MediaBrowserConnectionCallback
+    private lateinit var mediaControllerCallback: MediaControllerCallback
+    private lateinit var subscriptionCallback:SubscriptionCallback
 
     private inner class MediaBrowserConnectionCallback(private val context: Context) :
         MediaBrowserCompat.ConnectionCallback() {
@@ -64,12 +75,14 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
          */
         override fun onConnected() {
             if (mediaBrowser.isConnected) {
+                Log.e("===", "onConnected")
                 mediaId = mediaBrowser.getRoot()
                 mediaBrowser.unsubscribe(mediaId)
-                mediaBrowser.subscribe(mediaId, SubscriptionCallback())
-
+                subscriptionCallback = SubscriptionCallback()
+                mediaBrowser.subscribe(mediaId, subscriptionCallback)
+                mediaControllerCallback = MediaControllerCallback()
                 mediaController = MediaControllerCompat(context, mediaBrowser.sessionToken).apply {
-                    registerCallback(MediaControllerCallback())
+                    registerCallback(mediaControllerCallback)
                 }
                 isConnected.postValue(true)
             }
@@ -79,7 +92,8 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
          * Invoked when the client is disconnected from the media browser.
          */
         override fun onConnectionSuspended() {
-            mediaBrowser.unsubscribe(mediaId)
+            Log.e("===", "onConnectionSuspended")
+            mediaBrowser.unsubscribe(mediaId, subscriptionCallback)
             isConnected.postValue(false)
         }
 
@@ -135,20 +149,41 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
          */
         override fun onMetadataChanged(metadata: MediaMetadataCompat?) {
             nowPlaying.postValue(metadata ?: NOTHING_PLAYING)
-            playDurationTime.set(timestampToMSS(metadata?.getLong(MediaMetadataCompat.METADATA_KEY_DURATION)))
+            playDurationTime.set(
+                StringUtil.timestampToMSS(
+                    getApplication<MusicApp>(),
+                    metadata?.getLong(MediaMetadataCompat.METADATA_KEY_DURATION)
+                )
+            )
             title.set(metadata?.getString(MediaMetadataCompat.METADATA_KEY_TITLE))
         }
 
         /**
-         * 歌单或者音乐列表
+         * 0歌单1音乐列表2播放记录列表
          */
         override fun onQueueChanged(queue: MutableList<MediaSessionCompat.QueueItem>) {
+            if (queue.isEmpty()) {
+                return
+            }
+            Log.e("===", "onQueueChanged${queue[0].description.extras!!.get(IntentKey.QUEUE_TYPE)}")
             when (queue[0].description.extras!!.get(IntentKey.QUEUE_TYPE)) {
                 0 -> {
                     formList.value = queue
                 }
                 1 -> {
                     musicList.value = queue
+                }
+                2 -> {
+                    val item = queue[0].description.extras!!
+                    showPlayerRecord(PlayerRecordInfo().apply {
+                        musicId = item.getInt(IntentKey.PLAYER_RECORD_MUSICID_INT)
+                        progress = item.getLong(IntentKey.PLAYER_RECORD_PROGRESS_LONG)
+                        formId = item.getInt(IntentKey.PLAYER_RECORD_FORMID_INT)
+                        musicName = queue[0].description.title.toString()
+                        formName = queue[0].description.subtitle.toString()
+                        id = queue[0].description.mediaId!!.toInt()
+                        recordTime = item.getLong(IntentKey.PLAYER_RECORD_RECORDTIME_LONG)
+                    })
                 }
             }
         }
@@ -160,8 +195,27 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
          * send it on to the other callback.
          */
         override fun onSessionDestroyed() {
+            Log.e("===", "onSessionDestroyed")
             mediaBrowserConnectionCallback.onConnectionSuspended()
+            mediaController.unregisterCallback(this)
         }
+    }
+
+    fun showPlayerRecord(info: PlayerRecordInfo) {
+        playerRecordInfo = info
+        playTime.set(
+            StringUtil.timestampToMSS(
+                getApplication<MusicApp>(),
+                info.progress
+            )
+        )
+        loadMusicList(info.formId.toString())
+    }
+
+    fun playMusicByMusicId(mediaId: Int, progress: Long) {
+        mediaController.transportControls.playFromMediaId(
+            mediaId.toString(),
+            Bundle().apply { putLong(IntentKey.PLAYER_RECORD_PROGRESS_LONG, progress) })
     }
 
 
@@ -176,13 +230,11 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
         .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, 0)
         .build()
 
-    override fun onDestroy() {
-        super.onDestroy()
-        mediaBrowser.disconnect()
-    }
-
     override fun onCleared() {
         super.onCleared()
+        Log.e("===", "onCleared")
+        mediaController.transportControls.sendCustomAction(IntentKey.STOP_SEVER, null)
+        mediaBrowser.disconnect()
         updatePosition = false
     }
 
@@ -208,32 +260,15 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
                 val pos = playbackState.value!!.currentPlayBackPosition
                 val duration = nowPlaying.value!!.getLong(MediaMetadataCompat.METADATA_KEY_DURATION)
                 if (pos <= duration) {
-                    playTime.set(timestampToMSS(pos))
+                    playTime.set(StringUtil.timestampToMSS(getApplication<MusicApp>(), pos))
                 }
                 progress.set((pos.toFloat() / duration * 100).toInt())
-                }
+            }
 
             if (updatePosition) {
                 checkPlaybackPosition()
             }
         }, POSITION_UPDATE_INTERVAL_MILLIS)
-    }
-
-    /**
-     * 格式化播放时间
-     */
-    fun timestampToMSS(totalSeconds: Long?): String {
-        if (totalSeconds == null) {
-            return getApplication<MusicApp>().getString(R.string.duration_unknown)
-        }
-        val temp = totalSeconds / 1000
-        val minutes = temp / 60
-        val remainingSeconds = temp - (minutes * 60)
-        return if (totalSeconds < 0) getApplication<MusicApp>().getString(R.string.duration_unknown)
-        else getApplication<MusicApp>().getString(R.string.duration_format).format(
-            minutes,
-            remainingSeconds
-        )
     }
 
     fun onRefreshForm(view: View) {
@@ -253,7 +288,7 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
     }
 
     fun onTiming(view: View) {
-        mediaController.transportControls.stop()
+        showTiming.value = true
     }
 
     fun onPrev(view: View) {
@@ -269,7 +304,6 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
     }
 
     fun loadMusicList(formId: String) {
-
         mediaController.transportControls.sendCustomAction(
             IntentKey.LOAD_MUSIC_LIST,
             Bundle().apply {
@@ -287,5 +321,22 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
                 nowPlaying.value!!.getLong(MediaMetadataCompat.METADATA_KEY_DURATION) * (progress / 100f)
             mediaController.transportControls.seekTo(toTime.toLong())
         }
+    }
+
+    fun loadPlayerRecordInfo() {
+        mediaController.transportControls.sendCustomAction(
+            IntentKey.LOAD_PLAYER_RECORD, null
+        )
+    }
+
+    fun startTiming(timing: Long) {
+         Observable.intervalRange(0, timing, 0, 1, TimeUnit.MINUTES)
+            .compose(RxJavaHelper.schedulersTransformer())
+            .subscribe {
+                timingText.set("定时${StringUtil.timestampToMSS(getApplication(), it)}")
+                if (timing - 1 == it) {
+                    mediaController.transportControls.pause()
+                }
+            }
     }
 }
