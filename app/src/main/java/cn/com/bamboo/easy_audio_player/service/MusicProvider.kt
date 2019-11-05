@@ -11,29 +11,35 @@ import io.reactivex.Maybe
 class MusicProvider(var database: MusicDatabase) {
 
     fun getMusicFormList(list: (List<MusicForm>) -> Unit) {
-        Maybe.create<List<MusicForm>> {
+        Maybe.create<List<MusicForm>?> {
             it.onSuccess(database.musicFormDao().loadAllList())
         }.compose(RxJavaHelper.schedulersTransformerMaybe())
             .subscribe {
-                list(it)
+                it?.let {
+                    list(it)
+                }
             }
     }
 
     fun getMusicList(formId: Int, list: (List<Music>) -> Unit) {
-        Maybe.create<List<Music>> {
+        Maybe.create<List<Music>?> {
             it.onSuccess(database.musicDao().loadMusicListByFormId(formId))
         }.compose(RxJavaHelper.schedulersTransformerMaybe())
             .subscribe {
-                list(it)
+                it?.let {
+                    list(it)
+                }
             }
     }
 
     fun getPlayerRecordList(list: (List<PlayerRecordInfo>) -> Unit) {
-        Maybe.create<List<PlayerRecordInfo>>{
+        Maybe.create<List<PlayerRecordInfo>?>{
             it.onSuccess(database.playerRecordDao().loadPlayerRecordInfoAll2List())
         }.compose(RxJavaHelper.schedulersTransformerMaybe())
             .subscribe {
-                list(it)
+                it?.let {
+                    list(it)
+                }
             }
     }
 
@@ -71,11 +77,13 @@ class MusicProvider(var database: MusicDatabase) {
     }
 
     fun loadMusic(musicId: String, callback :(Music) -> Unit) {
-        Maybe.create<Music> {
+        Maybe.create<Music?> {
             it.onSuccess(database.musicDao().loadMusicById(musicId.toInt()))
         }.compose(RxJavaHelper.schedulersTransformerMaybe())
             .subscribe {
-                callback(it)
+                it?.let {
+                    callback(it)
+                }
             }
     }
 }

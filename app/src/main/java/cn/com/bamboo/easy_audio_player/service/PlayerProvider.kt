@@ -2,6 +2,7 @@ package cn.com.bamboo.easy_audio_player.service
 
 import android.media.MediaPlayer
 import android.util.Log
+import java.io.File
 
 class PlayerProvider(val callback: PlayerCallback) : PlayerConfig {
 
@@ -14,21 +15,31 @@ class PlayerProvider(val callback: PlayerCallback) : PlayerConfig {
         }
 
         setOnCompletionListener {
+            Log.e("===", "setOnCompletionListener")
+            //修正当前状态一定要在回调之前，不然就会在执行回调后，修改状态，程序执行不正常
+            currentState = PlayerConfig.STATE_IDLE
             callback.onCompletion()
-            currentState = PlayerConfig.STATE_ENDED
         }
     }
 
-    override fun setData(path: String?) {
+    override fun setData(path: String?): Boolean {
+        Log.e("===", "setData_path=${path}")
         path?.let {
             reset()
-            mediaPlayer.setDataSource(path)
+            return if (File(path).exists()) {
+                mediaPlayer.setDataSource(path)
+                true
+            } else {
+                false
+            }
         }
+        return false
     }
 
     override fun prepare() {
         mediaPlayer.prepare()
         currentState = PlayerConfig.STATE_PREPARE
+        Log.e("===", "prepare_currentState=${currentState}")
     }
 
     override fun play() {
@@ -36,6 +47,7 @@ class PlayerProvider(val callback: PlayerCallback) : PlayerConfig {
             mediaPlayer.start()
             currentState = PlayerConfig.STATE_PLAY
         }
+        Log.e("===", "play_currentState=${currentState}")
     }
 
     override fun pause() {
@@ -54,17 +66,20 @@ class PlayerProvider(val callback: PlayerCallback) : PlayerConfig {
     }
 
     override fun release() {
+        Log.e("===", "release")
         mediaPlayer.stop()
         mediaPlayer.release()
         currentState = PlayerConfig.STATE_IDLE
     }
 
     override fun reset() {
+        Log.e("===", "reset")
         mediaPlayer.reset()
         currentState = PlayerConfig.STATE_IDLE
     }
 
     override fun stop() {
+        Log.e("===", "stop")
         mediaPlayer.stop()
         currentState = PlayerConfig.STATE_IDLE
     }
@@ -74,18 +89,22 @@ class PlayerProvider(val callback: PlayerCallback) : PlayerConfig {
     }
 
     override fun prev(path: String) {
-        setData(path)
-        pause()
-        play()
+        playPath(path)
     }
 
     override fun next(path: String) {
-        setData(path)
-        pause()
-        play()
+        playPath(path)
+    }
+
+    private fun playPath(path: String) {
+        if (setData(path)) {
+            pause()
+            play()
+        }
     }
 
     override fun getState(): Int {
+        Log.e("===", "getState=${currentState}")
         return currentState
     }
 

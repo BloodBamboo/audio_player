@@ -272,7 +272,7 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
     }
 
     fun onRefreshForm(view: View) {
-        mediaController.transportControls.sendCustomAction(IntentKey.LOAD_MUSIC_LIST, null)
+        mediaController.transportControls.sendCustomAction(IntentKey.LOAD_FORM_LIST, null)
     }
 
     fun onMusicForm(view: View) {
@@ -330,13 +330,20 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
     }
 
     fun startTiming(timing: Long) {
-         Observable.intervalRange(0, timing, 0, 1, TimeUnit.MINUTES)
+        subscriptions.add(Observable.intervalRange(0, timing, 0, 1, TimeUnit.SECONDS)
             .compose(RxJavaHelper.schedulersTransformer())
-            .subscribe {
-                timingText.set("定时${StringUtil.timestampToMSS(getApplication(), it)}")
-                if (timing - 1 == it) {
+            .subscribe({
+                timingText.set("定时${StringUtil.timestampToMSS(getApplication(), (timing - it - 1) * 1000)}")
+            }, {
+                it.message?.run {
+                    setMessage(this)
+                }
+            }, {
+                setMessage("定时结束")
+                if (playbackState.value?.state == PlaybackStateCompat.STATE_PLAYING) {
                     mediaController.transportControls.pause()
                 }
-            }
+            })
+        )
     }
 }

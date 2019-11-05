@@ -19,6 +19,7 @@ import cn.com.bamboo.easy_common.util.RxBus
 import cn.com.bamboo.easy_common.util.RxJavaHelper
 import cn.com.edu.hnzikao.kotlin.base.BaseViewModelFragment
 import io.reactivex.disposables.Disposable
+import kotlinx.android.synthetic.main.fragment_player.view.*
 import org.jetbrains.anko.alert
 
 class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewModel>() {
@@ -50,11 +51,12 @@ class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewMod
         })
 
         viewModel.musicList.observe(this, Observer { it ->
+            adapter.replaceData(it)
             viewModel.playerRecordInfo?.let { info ->
                 viewModel.title.set(info.musicName)
                 viewModel.playMusicByMusicId(info.musicId, info.progress)
+                binding.recyclerView.scrollToPosition(adapter.indexOfByMusicId(info.musicId.toString()))
             }
-            adapter.replaceData(it)
         })
         viewModel.nowPlaying.observe(this, Observer {
             viewModel.playerRecordInfo?.let { info ->
@@ -83,7 +85,7 @@ class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewMod
                 editText.setTextColor(context!!.resources.getColor(R.color.text_primary))
                 customView = editText
                 positiveButton("确定") {
-                    viewModel.startTiming(editText.text.toString().toLong())
+                    viewModel.startTiming(editText.text.toString().toLong() * 60)
                 }
                 negativeButton("取消") {
 

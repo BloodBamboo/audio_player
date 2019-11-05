@@ -38,4 +38,15 @@ class PlayerListAdapter :
             }
         }
     }
+
+    fun indexOfByMusicId(musicId: String): Int {
+        if (data.isNotEmpty()) {
+            for ((index, value) in data.withIndex()) {
+                if (value.description.mediaId == musicId) {
+                    return index
+                }
+            }
+        }
+        return 0
+    }
 }

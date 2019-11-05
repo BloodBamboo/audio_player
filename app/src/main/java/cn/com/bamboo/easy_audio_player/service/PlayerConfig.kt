@@ -18,17 +18,12 @@ interface PlayerConfig {
          */
         val STATE_PAUSE
             get() = 3
-        /**
-         * The player has finished playing the media.
-         */
-        val STATE_ENDED
-            get() = 4
 
         val STATE_PREPARE
-            get() = 5
+            get() = 4
     }
 
-    fun setData(path: String?)
+    fun setData(path: String?):Boolean
     fun play()
     fun prepare()
     fun pause()

@@ -66,6 +66,7 @@ class ControlNotificationBuilder(private val context: Context) {
     fun buildNotification(sessionToken: MediaSessionCompat.Token): Notification {
         if (shouldCreateNowPlayingChannel()) {
             createNowPlayingChannel()
+
         }
 
         val controller = MediaControllerCompat(context, sessionToken)
@@ -84,7 +85,7 @@ class ControlNotificationBuilder(private val context: Context) {
         val mediaStyle = androidx.media.app.NotificationCompat.MediaStyle()
             .setCancelButtonIntent(stopPendingIntent)
             .setMediaSession(sessionToken)
-            .setShowActionsInCompactView(0, 1, 2)
+            .setShowActionsInCompactView(0,1,2)
             .setShowCancelButton(true)
 
         return builder.setContentIntent(controller.sessionActivity)
@@ -94,6 +95,7 @@ class ControlNotificationBuilder(private val context: Context) {
             .setLargeIcon(description.iconBitmap)
             .setOnlyAlertOnce(true)
             .setSmallIcon(R.mipmap.ic_launcher)
+            .setUsesChronometer(false)
             .setStyle(mediaStyle)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .build()

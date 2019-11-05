@@ -133,18 +133,19 @@ class MusicService : MediaBrowserServiceCompat() {
                 val index = musicList?.indexOf(it)
                 index?.run {
                     currentMusic = this
-                    player.setData(it.path)
-                    player.prepare()
-                    progress?.run {
-                        player.seekTo(this)
-                    }
-                    musicProvider.savePlayRecord(it.formId, it.id, player.getCurrentPosition())
-                    mediaSessionCompat.setPlaybackState(
-                        getPlaybackStateCompat(
-                            mapPlaybackState(player.getState()),
-                            player.getCurrentPosition()
+                    if (player.setData(it.path)) {
+                        player.prepare()
+                        progress?.run {
+                            player.seekTo(this)
+                        }
+                        musicProvider.savePlayRecord(it.formId, it.id, player.getCurrentPosition())
+                        mediaSessionCompat.setPlaybackState(
+                            getPlaybackStateCompat(
+                                mapPlaybackState(player.getState()),
+                                player.getCurrentPosition()
+                            )
                         )
-                    )
+                    }
                 }
             }
         }
@@ -164,7 +165,13 @@ class MusicService : MediaBrowserServiceCompat() {
                 PlayerConfig.STATE_PLAY -> pauseMusicAndSaveInfo()
                 PlayerConfig.STATE_PREPARE -> player.play()
                 PlayerConfig.STATE_PAUSE -> player.play()
-                PlayerConfig.STATE_IDLE -> onSkipToQueueItem(currentMusic.toLong())
+                PlayerConfig.STATE_IDLE -> {
+//                    if (player.isPlaying()) {
+//                        pauseMusicAndSaveInfo()
+//                    } else {
+                        onSkipToQueueItem(currentMusic.toLong())
+//                    }
+                }
             }
 
             mediaSessionCompat.setPlaybackState(
@@ -321,23 +328,24 @@ class MusicService : MediaBrowserServiceCompat() {
     private fun playItem(pos: Long) {
         musicList?.let {
             val tempId = pos.toInt()
-            if (tempId < 0 || tempId > it.size) {
+            if (tempId < 0 || tempId >= it.size) {
+                player.pause()
                 return@let
             }
             currentMusic = tempId
             val item = it[pos.toInt()]
-            player.setData(item.path)
-            player.prepare()
-            player.play()
-            musicProvider.savePlayRecord(item.formId, item.id, player.getCurrentPosition())
-            mediaSessionCompat.setPlaybackState(
-                getPlaybackStateCompat(
-                    mapPlaybackState(player.getState()),
-                    player.getCurrentPosition()
+            if (player.setData(item.path)) {
+                player.prepare()
+                player.play()
+                musicProvider.savePlayRecord(item.formId, item.id, player.getCurrentPosition())
+                mediaSessionCompat.setPlaybackState(
+                    getPlaybackStateCompat(
+                        mapPlaybackState(player.getState()),
+                        player.getCurrentPosition()
+                    )
                 )
-            )
+            }
         }
-
     }
 
     private inner class MyPlayerCallback : PlayerCallback {
@@ -387,7 +395,6 @@ class MusicService : MediaBrowserServiceCompat() {
         return when (playerConfigState) {
             PlayerConfig.STATE_IDLE -> PlaybackStateCompat.STATE_NONE
             PlayerConfig.STATE_PLAY -> PlaybackStateCompat.STATE_PLAYING
-            PlayerConfig.STATE_ENDED -> PlaybackStateCompat.STATE_STOPPED
             PlayerConfig.STATE_PAUSE -> PlaybackStateCompat.STATE_PAUSED
             PlayerConfig.STATE_PREPARE -> PlaybackStateCompat.STATE_NONE
             else -> PlaybackStateCompat.STATE_NONE
