@@ -29,6 +29,7 @@ import cn.com.bamboo.easy_audio_player.vo.Music
 class MusicService : MediaBrowserServiceCompat() {
 
     private var player: PlayerConfig = PlayerProvider(MyPlayerCallback())
+    private var audioHelp: AudioHelp = AudioHelp(AudioHelpCallback())
     private lateinit var musicProvider: MusicProvider
     private lateinit var mediaSessionCompat: MediaSessionCompat
     //    private var formList: List<MusicForm>? = null
@@ -36,7 +37,9 @@ class MusicService : MediaBrowserServiceCompat() {
     private lateinit var becomingNoisyReceiver: BecomingNoisyReceiver
     private lateinit var notificationManager: NotificationManagerCompat
     private lateinit var notificationBuilder: ControlNotificationBuilder
+
     protected lateinit var mediaController: MediaControllerCompat
+    protected lateinit var am: AudioManager
 
     //管理多个session,暂时没有使用
     private var currentMusic: Int = 0
@@ -45,6 +48,7 @@ class MusicService : MediaBrowserServiceCompat() {
 
     override fun onCreate() {
         super.onCreate()
+        am = application.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         musicProvider = MusicProvider((application as MusicApp).database)
         // Build a PendingIntent that can be used to launch the UI.
         val sessionActivityPendingIntent =
@@ -129,6 +133,7 @@ class MusicService : MediaBrowserServiceCompat() {
 
         override fun onPlayFromMediaId(musicId: String?, extras: Bundle?) {
             val progress = extras?.getLong(IntentKey.PLAYER_RECORD_PROGRESS_LONG)
+            val play = extras?.getBoolean(IntentKey.LOAD_PLAY_RECORD)
             musicProvider.loadMusic(musicId!!) {
                 val index = musicList?.indexOf(it)
                 index?.run {
@@ -138,13 +143,10 @@ class MusicService : MediaBrowserServiceCompat() {
                         progress?.run {
                             player.seekTo(this)
                         }
+                        if (play != null && play) {
+                            playMusic()
+                        }
                         musicProvider.savePlayRecord(it.formId, it.id, player.getCurrentPosition())
-                        mediaSessionCompat.setPlaybackState(
-                            getPlaybackStateCompat(
-                                mapPlaybackState(player.getState()),
-                                player.getCurrentPosition()
-                            )
-                        )
                     }
                 }
             }
@@ -161,25 +163,7 @@ class MusicService : MediaBrowserServiceCompat() {
         }
 
         override fun onPause() {
-            when (player.getState()) {
-                PlayerConfig.STATE_PLAY -> pauseMusicAndSaveInfo()
-                PlayerConfig.STATE_PREPARE -> player.play()
-                PlayerConfig.STATE_PAUSE -> player.play()
-                PlayerConfig.STATE_IDLE -> {
-//                    if (player.isPlaying()) {
-//                        pauseMusicAndSaveInfo()
-//                    } else {
-                        onSkipToQueueItem(currentMusic.toLong())
-//                    }
-                }
-            }
-
-            mediaSessionCompat.setPlaybackState(
-                getPlaybackStateCompat(
-                    mapPlaybackState(player.getState()),
-                    player.getCurrentPosition()
-                )
-            )
+            playerOnPause()
         }
 
         override fun onSeekTo(pos: Long) {
@@ -301,20 +285,47 @@ class MusicService : MediaBrowserServiceCompat() {
                 }
                 IntentKey.STOP_SEVER -> {
                     pauseMusicAndSaveInfo()
-                    mediaSessionCompat.setPlaybackState(
-                        getPlaybackStateCompat(
-                            PlaybackStateCompat.STATE_NONE,
-                            player.getCurrentPosition()
-                        )
-                    )
                 }
             }
         }
     }
 
+    private fun playerOnPause() {
+        when (player.getState()) {
+            PlayerConfig.STATE_PLAY -> pauseMusicAndSaveInfo()
+            PlayerConfig.STATE_PREPARE -> playMusic()
+            PlayerConfig.STATE_PAUSE -> playMusic()
+            PlayerConfig.STATE_IDLE -> {
+                if (player.isPlaying()) {
+                    pauseMusicAndSaveInfo()
+                } else {
+                    playItem(currentMusic.toLong())
+                }
+            }
+        }
+    }
+
+    private fun playMusic() {
+        player.play()
+        mediaSessionCompat.setPlaybackState(
+            getPlaybackStateCompat(
+                mapPlaybackState(player.getState()),
+                player.getCurrentPosition()
+            )
+        )
+        tryToGetAudioFocus()
+    }
+
     private fun pauseMusicAndSaveInfo() {
         player.pause()
+        giveUpAudioFocus()
         saveCurrentPlayer()
+        mediaSessionCompat.setPlaybackState(
+            getPlaybackStateCompat(
+                mapPlaybackState(player.getState()),
+                player.getCurrentPosition()
+            )
+        )
     }
 
     /**
@@ -336,15 +347,44 @@ class MusicService : MediaBrowserServiceCompat() {
             val item = it[pos.toInt()]
             if (player.setData(item.path)) {
                 player.prepare()
-                player.play()
+                playMusic()
                 musicProvider.savePlayRecord(item.formId, item.id, player.getCurrentPosition())
-                mediaSessionCompat.setPlaybackState(
-                    getPlaybackStateCompat(
-                        mapPlaybackState(player.getState()),
-                        player.getCurrentPosition()
-                    )
-                )
             }
+        }
+    }
+
+    /**
+     * 尝试获取音频焦点
+     * requestAudioFocus(OnAudioFocusChangeListener l, int streamType, int durationHint)
+     * OnAudioFocusChangeListener l：音频焦点状态监听器
+     * int streamType：请求焦点的音频类型
+     * int durationHint：请求焦点音频持续性的指示
+     *      AUDIOFOCUS_GAIN：指示申请得到的音频焦点不知道会持续多久，一般是长期占有
+     *      AUDIOFOCUS_GAIN_TRANSIENT：指示要申请的音频焦点是暂时性的，会很快用完释放的
+     *      AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK：指示要申请的音频焦点是暂时性的，同时还指示当前正在使用焦点的音频可以继续播放，只是要“duck”一下（降低音量）
+     */
+    private fun tryToGetAudioFocus() {
+        var result =
+        am.requestAudioFocus(
+            audioHelp.audioFocusChangeListener,//状态监听器
+            AudioManager.STREAM_MUSIC,//
+            AudioManager.AUDIOFOCUS_GAIN);
+        if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            audioHelp.currentAudioFocusState = AudioHelp.AUDIO_FOCUSED;
+        } else {
+            audioHelp.currentAudioFocusState = AudioHelp.AUDIO_NO_FOCUS_NO_DUCK;
+        }
+    }
+
+    /**
+     * 放弃音频焦点
+     */
+    private fun giveUpAudioFocus() {
+        //申请放弃音频焦点
+        if (am.abandonAudioFocus(audioHelp.audioFocusChangeListener)
+            == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            //AudioManager.AUDIOFOCUS_REQUEST_GRANTED 申请成功
+            audioHelp.currentAudioFocusState = AudioHelp.AUDIO_NO_FOCUS_NO_DUCK;
         }
     }
 
@@ -405,6 +445,24 @@ class MusicService : MediaBrowserServiceCompat() {
         return PlaybackStateCompat.Builder()
             .setState(playbackState, pos, playerSpeed)
             .build()
+    }
+
+    private inner class AudioHelpCallback : AudioHelp.AudioHelpCallback {
+        override fun isPlaying(): Boolean {
+            return player.isPlaying()
+        }
+
+        override fun pause() {
+            playerOnPause()
+        }
+
+        override fun setVolume(volume: Float) {
+            player.setVolume(volume)
+        }
+
+        override fun play() {
+            playerOnPause()
+        }
     }
 
     /**
@@ -516,5 +574,4 @@ private class BecomingNoisyReceiver(
             controller.transportControls.pause()
         }
     }
-
 }

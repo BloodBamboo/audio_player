@@ -49,6 +49,8 @@ class PlayerRecordInfo {
     var recordTime: Long = System.currentTimeMillis()
     var formName:String = ""
     var musicName:String = ""
+    @Ignore
+    var isPlay:Boolean = false
 
     fun formatProgress(context: Context):String {
         return StringUtil.timestampToMSS(context,progress)

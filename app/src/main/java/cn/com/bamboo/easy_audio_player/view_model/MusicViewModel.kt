@@ -40,7 +40,6 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
     val playbackState = MutableLiveData<PlaybackStateCompat>()
         .apply { postValue(EMPTY_PLAYBACK_STATE) }
     val nowPlaying = MutableLiveData<MediaMetadataCompat>()
-        .apply { postValue(NOTHING_PLAYING) }
 
     val play = ObservableBoolean(true)
 
@@ -212,10 +211,12 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
         loadMusicList(info.formId.toString())
     }
 
-    fun playMusicByMusicId(mediaId: Int, progress: Long) {
+    fun playMusicByMusicId(mediaId: Int, progress: Long, play: Boolean) {
         mediaController.transportControls.playFromMediaId(
             mediaId.toString(),
-            Bundle().apply { putLong(IntentKey.PLAYER_RECORD_PROGRESS_LONG, progress) })
+            Bundle().apply { putLong(IntentKey.PLAYER_RECORD_PROGRESS_LONG, progress)
+                putBoolean(IntentKey.LOAD_PLAY_RECORD, play)
+            })
     }
 
 

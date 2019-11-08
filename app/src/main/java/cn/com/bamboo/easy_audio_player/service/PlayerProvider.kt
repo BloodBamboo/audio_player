@@ -111,4 +111,8 @@ class PlayerProvider(val callback: PlayerCallback) : PlayerConfig {
     override fun seekTo(pos: Long) {
         mediaPlayer.seekTo(pos.toInt())
     }
+
+    override fun setVolume(volumeDuck: Float) {
+        mediaPlayer.setVolume(volumeDuck, volumeDuck)
+    }
 }

@@ -10,6 +10,7 @@ object IntentKey {
     val LOAD_FORM_LIST = "load_form_list"
     val LOAD_MUSIC_LIST = "load_music_list"
     val LOAD_PLAYER_RECORD = "load_player_record"
+    val LOAD_PLAY_RECORD = "load_play_record"//是否播放历史记录
     val QUEUE_TYPE = "queue_type" // 0.歌单 1 音乐 2.播放记录列表
     val PLAYER_RECORD_FORMID_INT = "player_record_formid_int"
     val PLAYER_RECORD_MUSICID_INT = "player_record_musicid_int"

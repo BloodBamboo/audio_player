@@ -22,7 +22,6 @@ interface PlayerConfig {
         val STATE_PREPARE
             get() = 4
     }
-
     fun setData(path: String?):Boolean
     fun play()
     fun prepare()
@@ -37,6 +36,7 @@ interface PlayerConfig {
     fun prev(path: String)
     fun next(path: String)
     fun getState(): Int
+    fun setVolume(volumeDuck: Float)
 }
 
 interface PlayerCallback {

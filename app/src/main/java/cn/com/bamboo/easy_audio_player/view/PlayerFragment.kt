@@ -19,7 +19,6 @@ import cn.com.bamboo.easy_common.util.RxBus
 import cn.com.bamboo.easy_common.util.RxJavaHelper
 import cn.com.edu.hnzikao.kotlin.base.BaseViewModelFragment
 import io.reactivex.disposables.Disposable
-import kotlinx.android.synthetic.main.fragment_player.view.*
 import org.jetbrains.anko.alert
 
 class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewModel>() {
@@ -54,11 +53,13 @@ class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewMod
             adapter.replaceData(it)
             viewModel.playerRecordInfo?.let { info ->
                 viewModel.title.set(info.musicName)
-                viewModel.playMusicByMusicId(info.musicId, info.progress)
-                binding.recyclerView.scrollToPosition(adapter.indexOfByMusicId(info.musicId.toString()))
+                viewModel.playMusicByMusicId(info.musicId, info.progress, info.isPlay)
             }
         })
         viewModel.nowPlaying.observe(this, Observer {
+            if (it == null) {
+                return@Observer
+            }
             viewModel.playerRecordInfo?.let { info ->
                 viewModel.progress.set(
                     (info.progress.toFloat() / it.getLong(
@@ -69,6 +70,7 @@ class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewMod
             viewModel.playerRecordInfo = null
             adapter.metadata = it
             adapter.notifyDataSetChanged()
+            binding.recyclerView.scrollToPosition(adapter.indexOfByMusicId(it.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID)))
         })
 
         viewModel.isConnected.observe(this, Observer {
@@ -123,6 +125,7 @@ class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewMod
         playerRecordDispos = RxBus.default?.toObservable(PlayerRecordEvent::class.java)!!
             .compose(RxJavaHelper.schedulersTransformer())
             .subscribe {
+                it.info.isPlay = true
                 viewModel.showPlayerRecord(it.info)
             }
     }
