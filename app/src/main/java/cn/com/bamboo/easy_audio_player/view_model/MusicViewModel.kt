@@ -28,6 +28,7 @@ import cn.com.bamboo.easy_common.util.RxJavaHelper
 import cn.com.bamboo.easy_common.util.StringUtil
 import cn.com.edu.hnzikao.kotlin.base.BaseViewModel
 import io.reactivex.Observable
+import io.reactivex.disposables.Disposable
 import java.util.concurrent.TimeUnit
 
 /**
@@ -58,6 +59,7 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
 
     private lateinit var mediaId: String
 
+    private var timing: Disposable? = null
     private var updatePosition = true
     private val handler = Handler(Looper.getMainLooper())
 
@@ -233,6 +235,10 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
+        timing?.run {
+            dispose()
+        }
+        timing = null
         Log.e("===", "onCleared")
         mediaController.transportControls.sendCustomAction(IntentKey.STOP_SEVER, null)
         mediaBrowser.disconnect()
@@ -330,21 +336,35 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
         )
     }
 
-    fun startTiming(timing: Long) {
-        subscriptions.add(Observable.intervalRange(0, timing, 0, 1, TimeUnit.SECONDS)
+    fun startTiming(timeNum: Long) {
+        timing?.run {
+            dispose()
+        }
+        timing = null
+        if (timeNum == 0L) {
+            timingText.set("定时")
+            return
+        }
+        timing = Observable.intervalRange(0, timeNum, 0, 1, TimeUnit.SECONDS)
             .compose(RxJavaHelper.schedulersTransformer())
             .subscribe({
-                timingText.set("定时${StringUtil.timestampToMSS(getApplication(), (timing - it - 1) * 1000)}")
+                timingText.set(
+                    "定时${StringUtil.timestampToMSS(
+                        getApplication(),
+                        (timeNum - it - 1) * 1000
+                    )}"
+                )
             }, {
                 it.message?.run {
                     setMessage(this)
                 }
             }, {
                 setMessage("定时结束")
+                timingText.set("定时")
                 if (playbackState.value?.state == PlaybackStateCompat.STATE_PLAYING) {
                     mediaController.transportControls.pause()
                 }
             })
-        )
+
     }
 }
