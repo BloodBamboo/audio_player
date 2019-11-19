@@ -16,6 +16,7 @@
         android:theme="@style/AppTheme">
         <activity android:name=".view.MainActivity"
             android:launchMode="singleTop"
+            android:configChanges="keyboardHidden|orientation|screenSize"
             >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -23,7 +24,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".view.MusicListActivity" />
+        <activity android:name=".view.MusicListActivity"
+            android:configChanges="keyboardHidden|orientation|screenSize"
+            />
 
         <service android:name=".service.MusicService" android:enabled="true"
             android:exported="true">
