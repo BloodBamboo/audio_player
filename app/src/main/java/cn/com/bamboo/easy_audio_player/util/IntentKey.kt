@@ -6,6 +6,7 @@ object IntentKey {
     val MEDIA_ID_ROOT = "MusicService"
     val FORM_ID = "formId"
     val FORM_NAME = "form_name"
+    val MUSIC_INFO = "music_info"
 
     val LOAD_FORM_LIST = "load_form_list"
     val LOAD_MUSIC_LIST = "load_music_list"
@@ -17,7 +18,4 @@ object IntentKey {
     val PLAYER_RECORD_DESCRIPTION_STRING = "player_record_description_string"
     val PLAYER_RECORD_PROGRESS_LONG = "player_record_progress_long"
     val PLAYER_RECORD_RECORDTIME_LONG = "player_record_recordtime_long"
-
-
-
 }

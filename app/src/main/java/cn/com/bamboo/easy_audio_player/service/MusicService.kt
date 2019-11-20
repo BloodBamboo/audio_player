@@ -37,9 +37,11 @@ class MusicService : MediaBrowserServiceCompat() {
     private lateinit var becomingNoisyReceiver: BecomingNoisyReceiver
     private lateinit var notificationManager: NotificationManagerCompat
     private lateinit var notificationBuilder: ControlNotificationBuilder
+    private lateinit var lockScreenReceiver: LockScreenReceiver
 
     protected lateinit var mediaController: MediaControllerCompat
     protected lateinit var am: AudioManager
+
 
     //管理多个session,暂时没有使用
     private var currentMusic: Int = 0
@@ -78,12 +80,22 @@ class MusicService : MediaBrowserServiceCompat() {
 
         becomingNoisyReceiver =
             BecomingNoisyReceiver(context = this, sessionToken = mediaSessionCompat.sessionToken)
+        lockScreenReceiver = LockScreenReceiver()
+        val intentFilter = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_USER_PRESENT)
+        }
+        registerReceiver(lockScreenReceiver, intentFilter)
     }
 
     override fun onDestroy() {
         super.onDestroy()
         Log.e("===", "service_onDestroy")
         saveCurrentPlayer()
+        lockScreenReceiver?.let {
+            unregisterReceiver(it)
+        }
+
         mediaSessionCompat.run {
             isActive = false
             release()
@@ -215,6 +227,15 @@ class MusicService : MediaBrowserServiceCompat() {
 
         override fun onCustomAction(action: String?, extras: Bundle?) {
             when (action) {
+                IntentKey.MUSIC_INFO -> {
+                    mediaSessionCompat.setPlaybackState(
+                        getPlaybackStateCompat(
+                            mapPlaybackState(player.getState()),
+                            player.getCurrentPosition()
+                        )
+                    )
+                    setMetadata()
+                }
                 IntentKey.LOAD_FORM_LIST -> {
                     musicProvider.getMusicFormList { it ->
                         val children = it?.mapIndexed { idx, item ->
@@ -390,25 +411,32 @@ class MusicService : MediaBrowserServiceCompat() {
 
     private inner class MyPlayerCallback : PlayerCallback {
         override fun onPrepared() {
-            mediaSessionCompat.setMetadata(
-                MediaMetadataCompat
-                    .Builder()
-                    .putString(
-                        MediaMetadataCompat.METADATA_KEY_TITLE,
-                        musicList!![currentMusic].name
-                    )
-                    .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, player.getDuration())
-                    .putString(
-                        MediaMetadataCompat.METADATA_KEY_MEDIA_ID,
-                        musicList!![currentMusic].id.toString()
-                    )
-                    .build()
-            )
+            setMetadata()
         }
 
         override fun onCompletion() {
             this@MusicService.playItem(currentMusic + 1.toLong())
         }
+    }
+
+    /**
+     * 设置媒体信息
+     */
+    private fun setMetadata() {
+        mediaSessionCompat.setMetadata(
+            MediaMetadataCompat
+                .Builder()
+                .putString(
+                    MediaMetadataCompat.METADATA_KEY_TITLE,
+                    musicList!![currentMusic].name
+                )
+                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, player.getDuration())
+                .putString(
+                    MediaMetadataCompat.METADATA_KEY_MEDIA_ID,
+                    musicList!![currentMusic].id.toString()
+                )
+                .build()
+        )
     }
 
     /**

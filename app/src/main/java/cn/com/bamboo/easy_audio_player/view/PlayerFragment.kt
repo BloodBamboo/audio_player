@@ -7,16 +7,19 @@ import android.text.InputType
 import android.view.View
 import android.widget.EditText
 import android.widget.SeekBar
+import androidx.core.view.get
 import androidx.lifecycle.Observer
 import cn.com.bamboo.easy_audio_player.BR
 import cn.com.bamboo.easy_audio_player.R
 import cn.com.bamboo.easy_audio_player.adapter.PlayerListAdapter
 import cn.com.bamboo.easy_audio_player.databinding.FragmentPlayerBinding
+import cn.com.bamboo.easy_audio_player.util.Constant
 import cn.com.bamboo.easy_audio_player.util.IntentKey
 import cn.com.bamboo.easy_audio_player.util.PlayerRecordEvent
 import cn.com.bamboo.easy_audio_player.view_model.MusicViewModel
 import cn.com.bamboo.easy_common.util.RxBus
 import cn.com.bamboo.easy_common.util.RxJavaHelper
+import cn.com.bamboo.easy_common.util.SharedPreferencesUtil
 import cn.com.edu.hnzikao.kotlin.base.BaseViewModelFragment
 import io.reactivex.disposables.Disposable
 import org.jetbrains.anko.alert
@@ -24,6 +27,7 @@ import org.jetbrains.anko.alert
 class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewModel>() {
     private var adapter: PlayerListAdapter = PlayerListAdapter()
     private var playerRecordDispos: Disposable? = null
+    private val lockScreen = listOf("锁屏_关", "锁屏_开")
 
     /**
      * 页面布局
@@ -45,6 +49,28 @@ class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewMod
         super.onViewCreated(view, savedInstanceState)
         viewModel.initMedia(context!!)
         setTitleAndBackspace("播放音乐")
+        toolbar?.inflateMenu(R.menu.menu_item)
+        toolbar?.menu!![0].title =
+            if (SharedPreferencesUtil.getData(Constant.LOCK_SCREEN, false) as Boolean) {
+                lockScreen[1]
+            } else {
+                lockScreen[0]
+            }
+        toolbar?.setOnMenuItemClickListener {
+            when (it.title) {
+                lockScreen[0] -> {
+                    toolbar?.menu!![0].title = lockScreen[1]
+                    SharedPreferencesUtil.putData(Constant.LOCK_SCREEN, true)
+                }
+                lockScreen[1] -> {
+                    toolbar?.menu!![0].title = lockScreen[0]
+                    SharedPreferencesUtil.putData(Constant.LOCK_SCREEN, false)
+                }
+            }
+            return@setOnMenuItemClickListener true
+        }
+
+
         viewModel.formList.observe(this, Observer {
             adapter.replaceData(it)
         })

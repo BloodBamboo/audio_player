@@ -1,9 +1,10 @@
 package cn.com.bamboo.easy_audio_player
 
 import android.app.Application
-import android.content.Context
 import cn.com.bamboo.easy_audio_player.db.MusicDatabase
 import cn.com.bamboo.easy_audio_player.di.DaggerDatabaseComponent
+import cn.com.bamboo.easy_audio_player.util.Constant
+import cn.com.bamboo.easy_common.util.SharedPreferencesUtil
 import com.facebook.stetho.Stetho
 import javax.inject.Inject
 
@@ -17,6 +18,7 @@ class MusicApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        SharedPreferencesUtil.initInstance(this, Constant.SHARED_PREFERENCES)
         DaggerDatabaseComponent.builder().application(this).build().inject(this)
         if (BuildConfig.DEBUG) {
             //chrome://inspect/#devices

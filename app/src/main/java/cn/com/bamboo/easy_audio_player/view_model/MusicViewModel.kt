@@ -21,6 +21,7 @@ import androidx.media.MediaBrowserServiceCompat
 import cn.com.bamboo.easy_audio_player.MusicApp
 import cn.com.bamboo.easy_audio_player.R
 import cn.com.bamboo.easy_audio_player.service.MusicService
+import cn.com.bamboo.easy_audio_player.util.Constant
 import cn.com.bamboo.easy_audio_player.util.IntentKey
 import cn.com.bamboo.easy_audio_player.util.currentPlayBackPosition
 import cn.com.bamboo.easy_audio_player.vo.PlayerRecordInfo
@@ -36,7 +37,6 @@ import java.util.concurrent.TimeUnit
  */
 class MusicViewModel(application: Application) : BaseViewModel(application) {
 
-    val POSITION_UPDATE_INTERVAL_MILLIS = 1000L
     val isConnected = MutableLiveData<Boolean>(false)
     val playbackState = MutableLiveData<PlaybackStateCompat>()
         .apply { postValue(EMPTY_PLAYBACK_STATE) }
@@ -275,7 +275,7 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
             if (updatePosition) {
                 checkPlaybackPosition()
             }
-        }, POSITION_UPDATE_INTERVAL_MILLIS)
+        }, Constant.POSITION_UPDATE_INTERVAL_MILLIS)
     }
 
     fun onRefreshForm(view: View) {
