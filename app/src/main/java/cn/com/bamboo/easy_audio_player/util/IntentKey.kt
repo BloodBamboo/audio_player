@@ -7,6 +7,11 @@ object IntentKey {
     val FORM_ID = "formId"
     val FORM_NAME = "form_name"
     val MUSIC_INFO = "music_info"
+    val PLAY_TIMING_PAUSE = "play_timing_pause"
+    val PLAY_TIMING_LONG = "play_timing_long"
+    val PLAY_TIMING_NEXT_LONG = "play_timing_next_long"
+    val PLAY_TIMING_ERROR_STRING = "play_timing_error_string"
+    val PLAY_TIMING_COMPLETE = "play_timing_complete"
 
     val LOAD_FORM_LIST = "load_form_list"
     val LOAD_MUSIC_LIST = "load_music_list"
@@ -18,4 +23,5 @@ object IntentKey {
     val PLAYER_RECORD_DESCRIPTION_STRING = "player_record_description_string"
     val PLAYER_RECORD_PROGRESS_LONG = "player_record_progress_long"
     val PLAYER_RECORD_RECORDTIME_LONG = "player_record_recordtime_long"
+
 }

@@ -4,7 +4,18 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-
+    <include android:id="@+id/toolbar_layout" layout="@layout/toolbar"/>
+    <TextView
+        android:id="@+id/text_timing"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@id/text_name"
+        android:layout_below="@id/toolbar_layout"
+        android:text="@string/duration_unknown"
+        android:textColor="@color/text_primary"
+        android:textSize="45dp"
+        android:gravity="center"
+        />
     <TextView
         android:id="@+id/text_name"
         android:layout_width="match_parent"

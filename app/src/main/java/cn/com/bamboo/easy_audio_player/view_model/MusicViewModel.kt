@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit
 class MusicViewModel(application: Application) : BaseViewModel(application) {
 
     val isConnected = MutableLiveData<Boolean>(false)
+    val location = MutableLiveData<Boolean>(true)
     val playbackState = MutableLiveData<PlaybackStateCompat>()
         .apply { postValue(EMPTY_PLAYBACK_STATE) }
     val nowPlaying = MutableLiveData<MediaMetadataCompat>()
@@ -59,7 +60,6 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
 
     private lateinit var mediaId: String
 
-    private var timing: Disposable? = null
     private var updatePosition = true
     private val handler = Handler(Looper.getMainLooper())
 
@@ -95,6 +95,7 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
         override fun onConnectionSuspended() {
             Log.e("===", "onConnectionSuspended")
             mediaBrowser.unsubscribe(mediaId, subscriptionCallback)
+            mediaController.unregisterCallback(mediaControllerCallback)
             isConnected.postValue(false)
         }
 
@@ -198,7 +199,36 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
         override fun onSessionDestroyed() {
             Log.e("===", "onSessionDestroyed")
             mediaBrowserConnectionCallback.onConnectionSuspended()
-            mediaController.unregisterCallback(this)
+//            mediaController.unregisterCallback(this)
+        }
+
+        override fun onSessionEvent(event: String?, extras: Bundle?) {
+            when (event) {
+                IntentKey.PLAY_TIMING_NEXT_LONG -> {
+                    extras?.let {
+                        val timeNum = extras.getLong(IntentKey.PLAY_TIMING_LONG)
+                        val time = extras.getLong(IntentKey.PLAY_TIMING_NEXT_LONG)
+                        timingText.set(
+                            "定时${StringUtil.timestampToMSS(
+                                getApplication(),
+                                (timeNum - time - 1) * 1000
+                            )}"
+                        )
+                    }
+                }
+                IntentKey.PLAY_TIMING_ERROR_STRING -> {
+                    if (extras?.getString(IntentKey.PLAY_TIMING_ERROR_STRING) != null) {
+                        setMessage(extras.getString(IntentKey.PLAY_TIMING_ERROR_STRING))
+                    }
+                }
+                IntentKey.PLAY_TIMING_COMPLETE -> {
+                    setMessage("定时结束")
+                    timingText.set("定时")
+                    if (playbackState.value?.state == PlaybackStateCompat.STATE_PLAYING) {
+                        mediaController.transportControls.sendCustomAction(IntentKey.PLAY_TIMING_PAUSE, null)
+                    }
+                }
+            }
         }
     }
 
@@ -235,10 +265,6 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
 
     override fun onCleared() {
         super.onCleared()
-        timing?.run {
-            dispose()
-        }
-        timing = null
         Log.e("===", "onCleared")
         mediaController.transportControls.sendCustomAction(IntentKey.STOP_SEVER, null)
         mediaBrowser.disconnect()
@@ -310,6 +336,10 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
         mediaController.transportControls.skipToNext()
     }
 
+    fun onLocation(view: View) {
+        location.value = true
+    }
+
     fun loadMusicList(formId: String) {
         mediaController.transportControls.sendCustomAction(
             IntentKey.LOAD_MUSIC_LIST,
@@ -337,34 +367,14 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
     }
 
     fun startTiming(timeNum: Long) {
-        timing?.run {
-            dispose()
-        }
-        timing = null
         if (timeNum == 0L) {
             timingText.set("定时")
-            return
         }
-        timing = Observable.intervalRange(0, timeNum, 0, 1, TimeUnit.SECONDS)
-            .compose(RxJavaHelper.schedulersTransformer())
-            .subscribe({
-                timingText.set(
-                    "定时${StringUtil.timestampToMSS(
-                        getApplication(),
-                        (timeNum - it - 1) * 1000
-                    )}"
-                )
-            }, {
-                it.message?.run {
-                    setMessage(this)
-                }
-            }, {
-                setMessage("定时结束")
-                timingText.set("定时")
-                if (playbackState.value?.state == PlaybackStateCompat.STATE_PLAYING) {
-                    mediaController.transportControls.pause()
-                }
-            })
 
+        val extras = Bundle()
+        extras.putLong(IntentKey.PLAY_TIMING_LONG, timeNum)
+        mediaController.transportControls.sendCustomAction(
+            IntentKey.PLAY_TIMING_LONG, extras
+        )
     }
 }

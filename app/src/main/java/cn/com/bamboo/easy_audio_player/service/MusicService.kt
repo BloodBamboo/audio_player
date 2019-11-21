@@ -23,6 +23,7 @@ import androidx.core.content.ContextCompat
 import androidx.media.MediaBrowserServiceCompat
 import cn.com.bamboo.easy_audio_player.MusicApp
 import cn.com.bamboo.easy_audio_player.util.IntentKey
+import cn.com.bamboo.easy_audio_player.util.TimingUtil
 import cn.com.bamboo.easy_audio_player.vo.Music
 
 
@@ -41,6 +42,7 @@ class MusicService : MediaBrowserServiceCompat() {
 
     protected lateinit var mediaController: MediaControllerCompat
     protected lateinit var am: AudioManager
+    private val timingUtil: TimingUtil = TimingUtil()
 
 
     //管理多个session,暂时没有使用
@@ -90,6 +92,7 @@ class MusicService : MediaBrowserServiceCompat() {
 
     override fun onDestroy() {
         super.onDestroy()
+        timingUtil.onDestroy()
         Log.e("===", "service_onDestroy")
         saveCurrentPlayer()
         lockScreenReceiver?.let {
@@ -175,7 +178,7 @@ class MusicService : MediaBrowserServiceCompat() {
         }
 
         override fun onPause() {
-            playerOnPause()
+            playerOrPause()
         }
 
         override fun onSeekTo(pos: Long) {
@@ -227,6 +230,39 @@ class MusicService : MediaBrowserServiceCompat() {
 
         override fun onCustomAction(action: String?, extras: Bundle?) {
             when (action) {
+                IntentKey.PLAY_TIMING_PAUSE -> {
+                    if (player.getState() != PlayerConfig.STATE_PAUSE) {
+                        Log.e("===", "PLAY_TIMING_PAUSE")
+                        pauseMusicAndSaveInfo()
+                    }
+                }
+
+                IntentKey.PLAY_TIMING_LONG -> {
+                    extras?.let {
+                        val timing = it.getLong(IntentKey.PLAY_TIMING_LONG)
+                        timingUtil.startTiming(timing, { time ->
+                            val extras = Bundle()
+                            extras.putLong(IntentKey.PLAY_TIMING_NEXT_LONG, time)
+                            extras.putLong(IntentKey.PLAY_TIMING_LONG, timing)
+                            mediaSessionCompat.sendSessionEvent(
+                                IntentKey.PLAY_TIMING_NEXT_LONG,
+                                extras
+                            )
+                        }, { throwable ->
+                            val extras = Bundle()
+                            extras.putString(IntentKey.PLAY_TIMING_ERROR_STRING, throwable.message)
+                            mediaSessionCompat.sendSessionEvent(
+                                IntentKey.PLAY_TIMING_NEXT_LONG,
+                                extras
+                            )
+                        }, {
+                            mediaSessionCompat.sendSessionEvent(
+                                IntentKey.PLAY_TIMING_COMPLETE,
+                                null
+                            )
+                        })
+                    }
+                }
                 IntentKey.MUSIC_INFO -> {
                     mediaSessionCompat.setPlaybackState(
                         getPlaybackStateCompat(
@@ -258,8 +294,8 @@ class MusicService : MediaBrowserServiceCompat() {
 
                 IntentKey.LOAD_MUSIC_LIST -> {
                     extras?.let {
-                        val formId = it.get(IntentKey.FORM_ID) ?: return@let
-                        musicProvider.getMusicList((formId as String).toInt()) { list ->
+                        val formId = it.getString(IntentKey.FORM_ID) ?: return@let
+                        musicProvider.getMusicList(formId.toInt()) { list ->
                             musicList = list
                             val children = list?.mapIndexed { idx, item ->
                                 val extras = Bundle()
@@ -311,7 +347,10 @@ class MusicService : MediaBrowserServiceCompat() {
         }
     }
 
-    private fun playerOnPause() {
+    /**
+     * 播放或者暂停
+     */
+    private fun playerOrPause() {
         when (player.getState()) {
             PlayerConfig.STATE_PLAY -> pauseMusicAndSaveInfo()
             PlayerConfig.STATE_PREPARE -> playMusic()
@@ -361,7 +400,9 @@ class MusicService : MediaBrowserServiceCompat() {
         musicList?.let {
             val tempId = pos.toInt()
             if (tempId < 0 || tempId >= it.size) {
-                player.pause()
+                if (player.getState() == PlayerConfig.STATE_PLAY) {
+                    playerOrPause()
+                }
                 return@let
             }
             currentMusic = tempId
@@ -423,6 +464,9 @@ class MusicService : MediaBrowserServiceCompat() {
      * 设置媒体信息
      */
     private fun setMetadata() {
+        if (musicList == null) {
+            return
+        }
         mediaSessionCompat.setMetadata(
             MediaMetadataCompat
                 .Builder()
@@ -481,7 +525,7 @@ class MusicService : MediaBrowserServiceCompat() {
         }
 
         override fun pause() {
-            playerOnPause()
+            playerOrPause()
         }
 
         override fun setVolume(volume: Float) {
@@ -489,7 +533,7 @@ class MusicService : MediaBrowserServiceCompat() {
         }
 
         override fun play() {
-            playerOnPause()
+            playerOrPause()
         }
     }
 

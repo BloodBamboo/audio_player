@@ -12,12 +12,19 @@ import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.view.WindowManager
 import android.widget.SeekBar
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.Toolbar
+import androidx.core.view.get
+import cn.com.bamboo.easy_audio_player.MusicApp
 import cn.com.bamboo.easy_audio_player.R
 import cn.com.bamboo.easy_audio_player.service.MusicService
 import cn.com.bamboo.easy_audio_player.util.Constant
 import cn.com.bamboo.easy_audio_player.util.IntentKey
+import cn.com.bamboo.easy_audio_player.util.TimingUtil
 import cn.com.bamboo.easy_audio_player.util.currentPlayBackPosition
+import cn.com.bamboo.easy_common.util.SharedPreferencesUtil
 import cn.com.bamboo.easy_common.util.StringUtil
 import kotlinx.android.synthetic.main.activity_lock_screen.*
 
@@ -28,11 +35,11 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
     private lateinit var mediaController: MediaControllerCompat
     private lateinit var mediaBrowserConnectionCallback: MediaBrowserConnectionCallback
     private lateinit var mediaControllerCallback: MediaControllerCallback
-    //    private lateinit var mediaId: String
     private var updatePosition = true
     private val handler = Handler(Looper.getMainLooper())
     var playbackState: PlaybackStateCompat? = null
     var nowPlaying: MediaMetadataCompat? = null
+    var toolbar: Toolbar? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         window.apply {
@@ -40,6 +47,8 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
             addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
         }
         super.onCreate(savedInstanceState)
+        (application as MusicApp).lockScreenVisible = true
+        buildToolbar()
         mediaBrowserConnectionCallback = MediaBrowserConnectionCallback(this)
         mediaBrowser = MediaBrowserCompat(
             this,
@@ -74,11 +83,51 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
                 }
             }
         })
+        text_timing.setOnClickListener {
+            TimingUtil.alertTiming(this){
+                startTiming(it)
+            }
+        }
+    }
+
+    /**
+     * 构建toolbar
+     */
+    private fun buildToolbar() {
+        toolbar = findViewById(cn.com.bamboo.easy_common.R.id.toolbar)
+        if (toolbar != null) {
+            var titleTextView: TextView? =
+                toolbar?.findViewById(cn.com.bamboo.easy_common.R.id.toolbar_title)
+            if (titleTextView == null) {
+                toolbar?.setTitle(title)
+            } else {
+                titleTextView.setText(title)
+            }
+
+            toolbar?.setNavigationIcon(cn.com.bamboo.easy_common.R.mipmap.ic_arrow_back_white)
+            toolbar?.setNavigationOnClickListener {
+                finish()
+            }
+        }
     }
 
     override fun onDestroy() {
         mediaBrowser.disconnect()
+        mediaController.unregisterCallback(mediaControllerCallback)
+        (application as MusicApp).lockScreenVisible = false
         super.onDestroy()
+    }
+
+    private fun startTiming(timeNum: Long) {
+        if (timeNum == 0L) {
+            text_timing.text = getString(R.string.duration_unknown)
+        }
+
+        val extras = Bundle()
+        extras.putLong(IntentKey.PLAY_TIMING_LONG, timeNum)
+        mediaController.transportControls.sendCustomAction(
+            IntentKey.PLAY_TIMING_LONG, extras
+        )
     }
 
     private fun checkPlaybackPosition(): Boolean {
@@ -97,6 +146,10 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
     }
 
     private fun setProgress() {
+        if (playbackState == null || nowPlaying == null) {
+            return
+        }
+
         val pos = playbackState!!.currentPlayBackPosition
         val duration = nowPlaying!!.getLong(MediaMetadataCompat.METADATA_KEY_DURATION)
         progress_bar.progress = (pos.toFloat() / duration * 100).toInt()
@@ -113,9 +166,6 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
         override fun onConnected() {
             if (mediaBrowser.isConnected) {
                 Log.e("===", "LockScreenActivity_onConnected")
-//                mediaId = mediaBrowser.getRoot()
-//                mediaBrowser.unsubscribe(mediaId)
-//                mediaBrowser.subscribe(mediaId, subscriptionCallback)
                 mediaControllerCallback = MediaControllerCallback()
                 mediaController = MediaControllerCompat(context, mediaBrowser.sessionToken).apply {
                     registerCallback(mediaControllerCallback)
@@ -130,17 +180,50 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
          */
         override fun onConnectionSuspended() {
             Log.e("===", "onConnectionSuspended")
-//            mediaBrowser.unsubscribe(mediaId, subscriptionCallback)
+            mediaController.unregisterCallback(mediaControllerCallback)
         }
 
         /**
          * Invoked when the connection to the media browser failed.
          */
         override fun onConnectionFailed() {
+            Log.e("===", "onConnectionFailed")
         }
     }
 
     private inner class MediaControllerCallback : MediaControllerCompat.Callback() {
+
+        override fun onSessionEvent(event: String?, extras: Bundle?) {
+            when (event) {
+                IntentKey.PLAY_TIMING_NEXT_LONG -> {
+                    extras?.let {
+                        val timeNum = extras.getLong(IntentKey.PLAY_TIMING_LONG)
+                        val time = extras.getLong(IntentKey.PLAY_TIMING_NEXT_LONG)
+                        text_timing.text =
+                            "${StringUtil.timestampToMSS(
+                                getApplication(),
+                                (timeNum - time - 1) * 1000
+                            )}"
+                    }
+                }
+                IntentKey.PLAY_TIMING_ERROR_STRING -> {
+                    if (extras?.getString(IntentKey.PLAY_TIMING_ERROR_STRING) != null) {
+                        Toast.makeText(this@LockScreenActivity,
+                            extras.getString(IntentKey.PLAY_TIMING_ERROR_STRING),
+                            Toast.LENGTH_SHORT).show()
+                    }
+                }
+                IntentKey.PLAY_TIMING_COMPLETE -> {
+                    Toast.makeText(this@LockScreenActivity,
+                        "定时结束",
+                        Toast.LENGTH_SHORT).show()
+                    text_timing.text = getString(R.string.duration_unknown)
+//                    if (playbackState?.state == PlaybackStateCompat.STATE_PLAYING) {
+//                        mediaController.transportControls.sendCustomAction(IntentKey.PLAY_TIMING_PAUSE, null)
+//                    }
+                }
+            }
+        }
 
         /**
          * 播放状态改变状态回调
@@ -182,7 +265,6 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
 
         override fun onSessionDestroyed() {
             mediaBrowserConnectionCallback.onConnectionSuspended()
-            mediaController.unregisterCallback(this)
         }
     }
 }

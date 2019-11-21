@@ -39,8 +39,9 @@ class PlayerListAdapter :
         }
     }
 
-    fun indexOfByMusicId(musicId: String): Int {
-        if (data.isNotEmpty()) {
+    fun indexOfByMusicId(): Int {
+        if (data.isNotEmpty() && metadata != null) {
+            val musicId = metadata!!.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID)
             for ((index, value) in data.withIndex()) {
                 if (value.description.mediaId == musicId) {
                     return index

@@ -23,6 +23,9 @@ import cn.com.bamboo.easy_common.util.SharedPreferencesUtil
 import cn.com.edu.hnzikao.kotlin.base.BaseViewModelFragment
 import io.reactivex.disposables.Disposable
 import org.jetbrains.anko.alert
+import androidx.recyclerview.widget.LinearLayoutManager
+import cn.com.bamboo.easy_audio_player.util.TimingUtil
+
 
 class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewModel>() {
     private var adapter: PlayerListAdapter = PlayerListAdapter()
@@ -96,7 +99,7 @@ class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewMod
             viewModel.playerRecordInfo = null
             adapter.metadata = it
             adapter.notifyDataSetChanged()
-            binding.recyclerView.scrollToPosition(adapter.indexOfByMusicId(it.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID)))
+            scrollToPositionHalfWindow(adapter.indexOfByMusicId())
         })
 
         viewModel.isConnected.observe(this, Observer {
@@ -104,21 +107,13 @@ class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewMod
                 viewModel.loadPlayerRecordInfo()
             }
         })
+        viewModel.location.observe(this, Observer {
+            scrollToPositionHalfWindow(adapter.indexOfByMusicId())
+        })
         viewModel.showTiming.observe(this, Observer {
-            activity?.alert {
-                title = "定时,单位分钟"
-                val editText = EditText(context)
-                editText.setText("45")
-                editText.inputType = InputType.TYPE_CLASS_NUMBER
-                editText.setTextColor(context!!.resources.getColor(R.color.text_primary))
-                customView = editText
-                positiveButton("确定") {
-                    viewModel.startTiming(editText.text.toString().toLong() * 60)
-                }
-                negativeButton("取消") {
-
-                }
-            }?.show()
+            TimingUtil.alertTiming(activity){
+                viewModel.startTiming(it)
+            }
         })
         adapter.setOnItemClickListener { adapter, view, position ->
             val item = adapter.getItem(position) as MediaSessionCompat.QueueItem
@@ -128,9 +123,6 @@ class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewMod
                 }
                 1 -> {
                     viewModel.playMusic(item.queueId)
-                }
-                2 -> {
-
                 }
             }
         }
@@ -154,6 +146,15 @@ class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewMod
                 it.info.isPlay = true
                 viewModel.showPlayerRecord(it.info)
             }
+    }
+
+    /**
+     * 滚动到recyclerView显示中间位置
+     */
+    private fun scrollToPositionHalfWindow(pos:Int) {
+        val llm = binding.recyclerView.getLayoutManager() as LinearLayoutManager
+        llm.scrollToPositionWithOffset(pos, binding.recyclerView.height / 2)
+        llm.stackFromEnd = false
     }
 
     override fun onDestroy() {
