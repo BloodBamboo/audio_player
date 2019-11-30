@@ -30,6 +30,7 @@
             android:configChanges="keyboardHidden|orientation|screenSize"
             />
         <activity android:name=".view.LockScreenActivity"
+            android:launchMode="singleInstance"
             android:taskAffinity="cn.com.bamboo.easy_audio_player.LockScreenActivity"
             android:configChanges="keyboardHidden|orientation|screenSize"
             android:exported="false"

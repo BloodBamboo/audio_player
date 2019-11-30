@@ -42,6 +42,7 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
     var toolbar: Toolbar? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.e("===", "LockScreenActivity_onCreate")
         window.apply {
             addFlags(WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD)
             addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED)
@@ -112,6 +113,7 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
     }
 
     override fun onDestroy() {
+        Log.e("===", "LockScreenActivity_onDestroy")
         mediaBrowser.disconnect()
         mediaController.unregisterCallback(mediaControllerCallback)
         (application as MusicApp).lockScreenVisible = false

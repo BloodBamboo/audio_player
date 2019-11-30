@@ -3,6 +3,7 @@ package cn.com.bamboo.easy_audio_player.service
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import cn.com.bamboo.easy_audio_player.MusicApp
 import cn.com.bamboo.easy_audio_player.util.Constant
 import cn.com.bamboo.easy_audio_player.view.LockScreenActivity
@@ -11,6 +12,9 @@ import cn.com.bamboo.easy_common.util.SharedPreferencesUtil
 class LockScreenReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context?, intent: Intent?) {
         intent?.let {
+            Log.e(
+                "===", "lockScreenVisible === ${(context?.applicationContext as MusicApp).lockScreenVisible} ====== LOCK_SCREEN = ${SharedPreferencesUtil.getData(Constant.LOCK_SCREEN, false) as Boolean}"
+            )
             if (intent?.action == Intent.ACTION_SCREEN_OFF
                 && SharedPreferencesUtil.getData(Constant.LOCK_SCREEN, false) as Boolean
                 && !(context?.applicationContext as MusicApp).lockScreenVisible

@@ -341,7 +341,7 @@ class MusicService : MediaBrowserServiceCompat() {
                     }
                 }
                 IntentKey.STOP_SEVER -> {
-                    pauseMusicAndSaveInfo()
+                    pauseMusicAndSaveInfo(PlaybackStateCompat.STATE_NONE)
                 }
             }
         }
@@ -376,13 +376,13 @@ class MusicService : MediaBrowserServiceCompat() {
         tryToGetAudioFocus()
     }
 
-    private fun pauseMusicAndSaveInfo() {
+    private fun pauseMusicAndSaveInfo(state: Int = player.getState()) {
         player.pause()
         giveUpAudioFocus()
         saveCurrentPlayer()
         mediaSessionCompat.setPlaybackState(
             getPlaybackStateCompat(
-                mapPlaybackState(player.getState()),
+                mapPlaybackState(state),
                 player.getCurrentPosition()
             )
         )
