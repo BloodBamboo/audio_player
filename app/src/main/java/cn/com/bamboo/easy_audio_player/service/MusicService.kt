@@ -341,7 +341,8 @@ class MusicService : MediaBrowserServiceCompat() {
                     }
                 }
                 IntentKey.STOP_SEVER -> {
-                    pauseMusicAndSaveInfo(PlaybackStateCompat.STATE_NONE)
+                    pauseMusicAndSaveInfo()
+                    stopSelf()
                 }
             }
         }
@@ -376,13 +377,13 @@ class MusicService : MediaBrowserServiceCompat() {
         tryToGetAudioFocus()
     }
 
-    private fun pauseMusicAndSaveInfo(state: Int = player.getState()) {
+    private fun pauseMusicAndSaveInfo() {
         player.pause()
         giveUpAudioFocus()
         saveCurrentPlayer()
         mediaSessionCompat.setPlaybackState(
             getPlaybackStateCompat(
-                mapPlaybackState(state),
+                mapPlaybackState(player.getState()),
                 player.getCurrentPosition()
             )
         )
@@ -392,8 +393,10 @@ class MusicService : MediaBrowserServiceCompat() {
      * 保存当前播放的音乐记录
      */
     private fun saveCurrentPlayer() {
-        val item = musicList!![currentMusic]
-        musicProvider.savePlayRecord(item.formId, item.id, player.getCurrentPosition())
+        musicList?.let {
+            val item = it[currentMusic]
+            musicProvider.savePlayRecord(item.formId, item.id, player.getCurrentPosition())
+        }
     }
 
     private fun playItem(pos: Long) {
@@ -596,10 +599,10 @@ class MusicService : MediaBrowserServiceCompat() {
                         stopForeground(false)
                         isForegroundService = false
 
-                        // If playback has ended, also stop the service.
-                        if (updatedState == PlaybackStateCompat.STATE_NONE) {
-                            stopSelf()
-                        }
+//                        // If playback has ended, also stop the service.
+//                        if (updatedState == PlaybackStateCompat.STATE_NONE) {
+//                            stopSelf()
+//                        }
 
                         if (notification != null) {
                             notificationManager.notify(NOW_PLAYING_NOTIFICATION, notification)
