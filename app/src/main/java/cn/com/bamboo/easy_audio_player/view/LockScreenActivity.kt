@@ -32,7 +32,7 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
 
 
     private lateinit var mediaBrowser: MediaBrowserCompat
-    private lateinit var mediaController: MediaControllerCompat
+    private var mediaController: MediaControllerCompat? = null
     private lateinit var mediaBrowserConnectionCallback: MediaBrowserConnectionCallback
     private lateinit var mediaControllerCallback: MediaControllerCallback
     private var updatePosition = true
@@ -58,15 +58,15 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
         )
         mediaBrowser.connect()
         image_play.setOnClickListener {
-            mediaController?.transportControls.pause()
+            mediaController?.transportControls?.pause()
         }
 
         image_prev.setOnClickListener {
-            mediaController?.transportControls.skipToPrevious()
+            mediaController?.transportControls?.skipToPrevious()
         }
 
         image_next.setOnClickListener {
-            mediaController?.transportControls.skipToNext()
+            mediaController?.transportControls?.skipToNext()
         }
 
         progress_bar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -80,7 +80,7 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
                 seekBar?.let {
                     val toTime =
                         nowPlaying!!.getLong(MediaMetadataCompat.METADATA_KEY_DURATION) * (it.progress / 100f)
-                    mediaController?.transportControls.seekTo(toTime.toLong())
+                    mediaController?.transportControls?.seekTo(toTime.toLong())
                 }
             }
         })
@@ -114,8 +114,8 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
 
     override fun onDestroy() {
         Log.e("===", "LockScreenActivity_onDestroy")
-        mediaBrowser.disconnect()
-        mediaController.unregisterCallback(mediaControllerCallback)
+        mediaBrowser?.disconnect()
+        mediaController?.unregisterCallback(mediaControllerCallback)
         (application as MusicApp).lockScreenVisible = false
         super.onDestroy()
     }
@@ -127,7 +127,7 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
 
         val extras = Bundle()
         extras.putLong(IntentKey.PLAY_TIMING_LONG, timeNum)
-        mediaController.transportControls.sendCustomAction(
+        mediaController?.transportControls?.sendCustomAction(
             IntentKey.PLAY_TIMING_LONG, extras
         )
     }
@@ -173,7 +173,7 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
                     registerCallback(mediaControllerCallback)
                 }
 
-                mediaController.transportControls.sendCustomAction(IntentKey.MUSIC_INFO, null)
+                mediaController?.transportControls?.sendCustomAction(IntentKey.MUSIC_INFO, null)
             }
         }
 
@@ -182,7 +182,7 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
          */
         override fun onConnectionSuspended() {
             Log.e("===", "onConnectionSuspended")
-            mediaController.unregisterCallback(mediaControllerCallback)
+            mediaController?.unregisterCallback(mediaControllerCallback)
         }
 
         /**
