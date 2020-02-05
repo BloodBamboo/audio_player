@@ -18,6 +18,7 @@ import androidx.databinding.ObservableField
 import androidx.databinding.ObservableInt
 import androidx.lifecycle.MutableLiveData
 import androidx.media.MediaBrowserServiceCompat
+import cn.com.bamboo.easy_audio_player.BuildConfig
 import cn.com.bamboo.easy_audio_player.MusicApp
 import cn.com.bamboo.easy_audio_player.R
 import cn.com.bamboo.easy_audio_player.service.MusicService
@@ -25,12 +26,8 @@ import cn.com.bamboo.easy_audio_player.util.Constant
 import cn.com.bamboo.easy_audio_player.util.IntentKey
 import cn.com.bamboo.easy_audio_player.util.currentPlayBackPosition
 import cn.com.bamboo.easy_audio_player.vo.PlayerRecordInfo
-import cn.com.bamboo.easy_common.util.RxJavaHelper
 import cn.com.bamboo.easy_common.util.StringUtil
 import cn.com.edu.hnzikao.kotlin.base.BaseViewModel
-import io.reactivex.Observable
-import io.reactivex.disposables.Disposable
-import java.util.concurrent.TimeUnit
 
 /**
  * 音乐播放viewModel
@@ -57,6 +54,7 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
     val musicList = MutableLiveData<List<MediaSessionCompat.QueueItem>>()
     val showTiming = MutableLiveData<Boolean>()
     var playerRecordInfo: PlayerRecordInfo? = null
+    var isShowTime = true
 
     private lateinit var mediaId: String
 
@@ -67,7 +65,7 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
     private lateinit var mediaController: MediaControllerCompat
     private lateinit var mediaBrowserConnectionCallback: MediaBrowserConnectionCallback
     private lateinit var mediaControllerCallback: MediaControllerCallback
-    private lateinit var subscriptionCallback:SubscriptionCallback
+    private lateinit var subscriptionCallback: SubscriptionCallback
 
     private inner class MediaBrowserConnectionCallback(private val context: Context) :
         MediaBrowserCompat.ConnectionCallback() {
@@ -134,9 +132,10 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
         override fun onPlaybackStateChanged(state: PlaybackStateCompat?) {
             playbackState.postValue(state ?: EMPTY_PLAYBACK_STATE)
             when (state?.state) {
-                PlaybackStateCompat.STATE_PAUSED,PlaybackStateCompat.STATE_NONE  -> {
+                PlaybackStateCompat.STATE_PAUSED, PlaybackStateCompat.STATE_NONE -> {
                     play.set(true)
                     updatePosition = false
+                    checkPlaybackPosition()
                 }
                 PlaybackStateCompat.STATE_PLAYING -> {
                     play.set(false)
@@ -206,14 +205,17 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
             when (event) {
                 IntentKey.PLAY_TIMING_NEXT_LONG -> {
                     extras?.let {
-                        val timeNum = extras.getLong(IntentKey.PLAY_TIMING_LONG)
-                        val time = extras.getLong(IntentKey.PLAY_TIMING_NEXT_LONG)
-                        timingText.set(
-                            "定时${StringUtil.timestampToMSS(
-                                getApplication(),
-                                (timeNum - time - 1) * 1000
-                            )}"
-                        )
+                        if (isShowTime) {
+                            val timeNum = extras.getLong(IntentKey.PLAY_TIMING_LONG)
+                            val time = extras.getLong(IntentKey.PLAY_TIMING_NEXT_LONG)
+
+                            timingText.set(
+                                "定时${StringUtil.timestampToMSS(
+                                    getApplication(),
+                                    (timeNum - time - 1) * 1000
+                                )}"
+                            )
+                        }
                     }
                 }
                 IntentKey.PLAY_TIMING_ERROR_STRING -> {
@@ -225,7 +227,10 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
                     setMessage("定时结束")
                     timingText.set("定时")
                     if (playbackState.value?.state == PlaybackStateCompat.STATE_PLAYING) {
-                        mediaController.transportControls.sendCustomAction(IntentKey.PLAY_TIMING_PAUSE, null)
+                        mediaController.transportControls.sendCustomAction(
+                            IntentKey.PLAY_TIMING_PAUSE,
+                            null
+                        )
                     }
                 }
             }
@@ -246,7 +251,8 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
     fun playMusicByMusicId(mediaId: Int, progress: Long, play: Boolean) {
         mediaController.transportControls.playFromMediaId(
             mediaId.toString(),
-            Bundle().apply { putLong(IntentKey.PLAYER_RECORD_PROGRESS_LONG, progress)
+            Bundle().apply {
+                putLong(IntentKey.PLAYER_RECORD_PROGRESS_LONG, progress)
                 putBoolean(IntentKey.LOAD_PLAY_RECORD, play)
             })
     }
@@ -286,22 +292,31 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
 
     private fun checkPlaybackPosition(): Boolean {
         return handler.postDelayed({
-            if (playbackState.value != null &&
-                nowPlaying.value != null &&
-                playbackState.value!!.state == PlaybackStateCompat.STATE_PLAYING
-            ) {
-                val pos = playbackState.value!!.currentPlayBackPosition
-                val duration = nowPlaying.value!!.getLong(MediaMetadataCompat.METADATA_KEY_DURATION)
-                if (pos <= duration) {
-                    playTime.set(StringUtil.timestampToMSS(getApplication<MusicApp>(), pos))
-                }
-                progress.set((pos.toFloat() / duration * 100).toInt())
+            if (isShowTime) {
+                setPlayTime()
             }
-
             if (updatePosition) {
                 checkPlaybackPosition()
             }
         }, Constant.POSITION_UPDATE_INTERVAL_MILLIS)
+    }
+
+    private fun setPlayTime() {
+        if (playbackState != null
+            && nowPlaying != null
+            && playbackState.value != null
+            && nowPlaying.value != null
+        ) {
+            val pos = playbackState.value!!.currentPlayBackPosition
+            val duration = nowPlaying.value!!.getLong(MediaMetadataCompat.METADATA_KEY_DURATION)
+            if (pos <= duration) {
+                playTime.set(StringUtil.timestampToMSS(getApplication<MusicApp>(), pos))
+            }
+            progress.set((pos.toFloat() / duration * 100).toInt())
+            if (BuildConfig.DEBUG) {
+                Log.i("===setPlayTime", "${pos}")
+            }
+        }
     }
 
     fun onRefreshForm(view: View) {

@@ -16,7 +16,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
-import androidx.core.view.get
 import cn.com.bamboo.easy_audio_player.MusicApp
 import cn.com.bamboo.easy_audio_player.R
 import cn.com.bamboo.easy_audio_player.service.MusicService
@@ -24,9 +23,10 @@ import cn.com.bamboo.easy_audio_player.util.Constant
 import cn.com.bamboo.easy_audio_player.util.IntentKey
 import cn.com.bamboo.easy_audio_player.util.TimingUtil
 import cn.com.bamboo.easy_audio_player.util.currentPlayBackPosition
-import cn.com.bamboo.easy_common.util.SharedPreferencesUtil
 import cn.com.bamboo.easy_common.util.StringUtil
+import io.reactivex.Observable
 import kotlinx.android.synthetic.main.activity_lock_screen.*
+import java.util.concurrent.TimeUnit
 
 class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
 
@@ -85,7 +85,7 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
             }
         })
         text_timing.setOnClickListener {
-            TimingUtil.alertTiming(this){
+            TimingUtil.alertTiming(this) {
                 startTiming(it)
             }
         }
@@ -109,6 +109,13 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
             toolbar?.setNavigationOnClickListener {
                 finish()
             }
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        Observable.timer(5, TimeUnit.MINUTES).subscribe {
+            finish()
         }
     }
 
@@ -210,15 +217,19 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
                 }
                 IntentKey.PLAY_TIMING_ERROR_STRING -> {
                     if (extras?.getString(IntentKey.PLAY_TIMING_ERROR_STRING) != null) {
-                        Toast.makeText(this@LockScreenActivity,
+                        Toast.makeText(
+                            this@LockScreenActivity,
                             extras.getString(IntentKey.PLAY_TIMING_ERROR_STRING),
-                            Toast.LENGTH_SHORT).show()
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
                 }
                 IntentKey.PLAY_TIMING_COMPLETE -> {
-                    Toast.makeText(this@LockScreenActivity,
+                    Toast.makeText(
+                        this@LockScreenActivity,
                         "定时结束",
-                        Toast.LENGTH_SHORT).show()
+                        Toast.LENGTH_SHORT
+                    ).show()
                     text_timing.text = getString(R.string.duration_unknown)
 //                    if (playbackState?.state == PlaybackStateCompat.STATE_PLAYING) {
 //                        mediaController.transportControls.sendCustomAction(IntentKey.PLAY_TIMING_PAUSE, null)
@@ -254,7 +265,7 @@ class LockScreenActivity : AppCompatActivity(R.layout.activity_lock_screen) {
                 return
             }
             nowPlaying = metadata
-            if (nowPlaying != null ) {
+            if (nowPlaying != null) {
                 setProgress()
             }
 

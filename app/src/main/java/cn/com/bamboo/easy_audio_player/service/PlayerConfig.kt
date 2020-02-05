@@ -22,6 +22,10 @@ interface PlayerConfig {
         val STATE_PREPARE
             get() = 4
     }
+
+    //每次赋值使用一次，后重置为true
+    var isOncePlay: Boolean
+
     fun setData(path: String?):Boolean
     fun play()
     fun prepare()

@@ -15,7 +15,7 @@ class LockScreenReceiver : BroadcastReceiver() {
             Log.e(
                 "===", "lockScreenVisible === ${(context?.applicationContext as MusicApp).lockScreenVisible} ====== LOCK_SCREEN = ${SharedPreferencesUtil.getData(Constant.LOCK_SCREEN, false) as Boolean}"
             )
-            if (intent?.action == Intent.ACTION_SCREEN_OFF
+            if (intent?.action == Intent.ACTION_SCREEN_ON
                 && SharedPreferencesUtil.getData(Constant.LOCK_SCREEN, false) as Boolean
                 && !(context?.applicationContext as MusicApp).lockScreenVisible
             ) {

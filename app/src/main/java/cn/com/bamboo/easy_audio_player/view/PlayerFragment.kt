@@ -3,12 +3,11 @@ package cn.com.bamboo.easy_audio_player.view
 import android.os.Bundle
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
-import android.text.InputType
 import android.view.View
-import android.widget.EditText
 import android.widget.SeekBar
 import androidx.core.view.get
 import androidx.lifecycle.Observer
+import androidx.recyclerview.widget.LinearLayoutManager
 import cn.com.bamboo.easy_audio_player.BR
 import cn.com.bamboo.easy_audio_player.R
 import cn.com.bamboo.easy_audio_player.adapter.PlayerListAdapter
@@ -16,15 +15,13 @@ import cn.com.bamboo.easy_audio_player.databinding.FragmentPlayerBinding
 import cn.com.bamboo.easy_audio_player.util.Constant
 import cn.com.bamboo.easy_audio_player.util.IntentKey
 import cn.com.bamboo.easy_audio_player.util.PlayerRecordEvent
+import cn.com.bamboo.easy_audio_player.util.TimingUtil
 import cn.com.bamboo.easy_audio_player.view_model.MusicViewModel
 import cn.com.bamboo.easy_common.util.RxBus
 import cn.com.bamboo.easy_common.util.RxJavaHelper
 import cn.com.bamboo.easy_common.util.SharedPreferencesUtil
 import cn.com.edu.hnzikao.kotlin.base.BaseViewModelFragment
 import io.reactivex.disposables.Disposable
-import org.jetbrains.anko.alert
-import androidx.recyclerview.widget.LinearLayoutManager
-import cn.com.bamboo.easy_audio_player.util.TimingUtil
 
 
 class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewModel>() {
@@ -155,6 +152,16 @@ class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewMod
         val llm = binding.recyclerView.getLayoutManager() as LinearLayoutManager
         llm.scrollToPositionWithOffset(pos, binding.recyclerView.height / 2)
         llm.stackFromEnd = false
+    }
+
+    override fun onStart() {
+        super.onStart()
+        viewModel.isShowTime = true
+    }
+
+    override fun onStop() {
+        super.onStop()
+        viewModel.isShowTime = false
     }
 
     override fun onDestroy() {

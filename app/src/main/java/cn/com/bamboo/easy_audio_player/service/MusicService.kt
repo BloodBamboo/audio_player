@@ -29,7 +29,7 @@ import cn.com.bamboo.easy_audio_player.vo.Music
 
 class MusicService : MediaBrowserServiceCompat() {
 
-    private var player: PlayerConfig = PlayerProvider(MyPlayerCallback())
+    private var player: PlayerConfig = PlayerProvider(MyPlayerCallback(), true)
     private var audioHelp: AudioHelp = AudioHelp(AudioHelpCallback())
     private lateinit var musicProvider: MusicProvider
     private lateinit var mediaSessionCompat: MediaSessionCompat
@@ -84,7 +84,7 @@ class MusicService : MediaBrowserServiceCompat() {
             BecomingNoisyReceiver(context = this, sessionToken = mediaSessionCompat.sessionToken)
         lockScreenReceiver = LockScreenReceiver()
         val intentFilter = IntentFilter().apply {
-            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_USER_PRESENT)
         }
         registerReceiver(lockScreenReceiver, intentFilter)
@@ -103,7 +103,7 @@ class MusicService : MediaBrowserServiceCompat() {
             isActive = false
             release()
         }
-        player.stop()
+        player.release()
     }
 
     override fun onLoadChildren(
@@ -148,20 +148,20 @@ class MusicService : MediaBrowserServiceCompat() {
 
         override fun onPlayFromMediaId(musicId: String?, extras: Bundle?) {
             val progress = extras?.getLong(IntentKey.PLAYER_RECORD_PROGRESS_LONG)
-            val play = extras?.getBoolean(IntentKey.LOAD_PLAY_RECORD)
+            extras?.getBoolean(IntentKey.LOAD_PLAY_RECORD)?.let {
+                player.isOncePlay = it
+            }
             musicProvider.loadMusic(musicId!!) {
                 val index = musicList?.indexOf(it)
                 index?.run {
                     currentMusic = this
                     if (player.setData(it.path)) {
-                        player.prepare()
-                        progress?.run {
-                            player.seekTo(this)
+                        if (progress != null) {
+                            playMusicPrepare(progress)
+                            player.seekTo(progress)
+                        } else {
+                            playMusicPrepare()
                         }
-                        if (play != null && play) {
-                            playMusic()
-                        }
-                        musicProvider.savePlayRecord(it.formId, it.id, player.getCurrentPosition())
                     }
                 }
             }
@@ -229,10 +229,10 @@ class MusicService : MediaBrowserServiceCompat() {
         }
 
         override fun onCustomAction(action: String?, extras: Bundle?) {
+            Log.e("===", "${action}")
             when (action) {
                 IntentKey.PLAY_TIMING_PAUSE -> {
                     if (player.getState() != PlayerConfig.STATE_PAUSE) {
-                        Log.e("===", "PLAY_TIMING_PAUSE")
                         pauseMusicAndSaveInfo()
                     }
                 }
@@ -366,7 +366,18 @@ class MusicService : MediaBrowserServiceCompat() {
         }
     }
 
+    private fun playMusicPrepare(pos: Long = 0) {
+        player.prepare()
+        mediaSessionCompat.setPlaybackState(
+            getPlaybackStateCompat(
+                mapPlaybackState(player.getState()),
+                pos
+            )
+        )
+    }
+
     private fun playMusic() {
+        Log.e("===", "playMusic")
         player.play()
         mediaSessionCompat.setPlaybackState(
             getPlaybackStateCompat(
@@ -411,9 +422,7 @@ class MusicService : MediaBrowserServiceCompat() {
             currentMusic = tempId
             val item = it[pos.toInt()]
             if (player.setData(item.path)) {
-                player.prepare()
-                playMusic()
-                musicProvider.savePlayRecord(item.formId, item.id, player.getCurrentPosition())
+                playMusicPrepare()
             }
         }
     }
@@ -456,6 +465,12 @@ class MusicService : MediaBrowserServiceCompat() {
     private inner class MyPlayerCallback : PlayerCallback {
         override fun onPrepared() {
             setMetadata()
+            if (player.isOncePlay) {
+                playMusic()
+                val item = musicList!![currentMusic]
+                musicProvider.savePlayRecord(item.formId, item.id, player.getCurrentPosition())
+            }
+            player.isOncePlay = true
         }
 
         override fun onCompletion() {
