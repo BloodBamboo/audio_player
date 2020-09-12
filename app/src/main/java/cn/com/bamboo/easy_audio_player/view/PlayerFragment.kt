@@ -29,6 +29,7 @@ class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewMod
     private var playerRecordDispos: Disposable? = null
     private val lockScreen = listOf("锁屏_关", "锁屏_开")
 
+
     /**
      * 页面布局
      * @return
@@ -108,7 +109,7 @@ class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewMod
             scrollToPositionHalfWindow(adapter.indexOfByMusicId())
         })
         viewModel.showTiming.observe(this, Observer {
-            TimingUtil.alertTiming(activity){
+            TimingUtil.alertTiming(activity) {
                 viewModel.startTiming(it)
             }
         })
@@ -130,11 +131,12 @@ class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewMod
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar?) {
-
+                viewModel.enableSeekBar = false
             }
 
             override fun onStopTrackingTouch(seekBar: SeekBar?) {
                 viewModel.seekTo(seekBar?.progress)
+                viewModel.enableSeekBar = true
             }
         })
         playerRecordDispos = RxBus.default?.toObservable(PlayerRecordEvent::class.java)!!
@@ -148,7 +150,7 @@ class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewMod
     /**
      * 滚动到recyclerView显示中间位置
      */
-    private fun scrollToPositionHalfWindow(pos:Int) {
+    private fun scrollToPositionHalfWindow(pos: Int) {
         val llm = binding.recyclerView.getLayoutManager() as LinearLayoutManager
         llm.scrollToPositionWithOffset(pos, binding.recyclerView.height / 2)
         llm.stackFromEnd = false
@@ -168,4 +170,6 @@ class PlayerFragment : BaseViewModelFragment<FragmentPlayerBinding, MusicViewMod
         playerRecordDispos?.dispose()
         super.onDestroy()
     }
+
+
 }

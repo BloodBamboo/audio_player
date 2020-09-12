@@ -1,30 +1,70 @@
 package cn.com.bamboo.easy_audio_player.service
 
+import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.PowerManager
 import android.util.Log
 import cn.com.bamboo.easy_audio_player.MusicApp
-import cn.com.bamboo.easy_audio_player.util.Constant
-import cn.com.bamboo.easy_audio_player.view.LockScreenActivity
-import cn.com.bamboo.easy_common.util.SharedPreferencesUtil
 
+/**
+ *create by yx
+ *on 2020/5/31
+ * 锁屏监听
+ */
 class LockScreenReceiver : BroadcastReceiver() {
+    private var mWakeLock: PowerManager.WakeLock? = null
+
+
     override fun onReceive(context: Context?, intent: Intent?) {
         intent?.let {
             Log.e(
-                "===", "lockScreenVisible === ${(context?.applicationContext as MusicApp).lockScreenVisible} ====== LOCK_SCREEN = ${SharedPreferencesUtil.getData(Constant.LOCK_SCREEN, false) as Boolean}"
+                "===",
+                "lockScreenVisible === " + intent.action
             )
-            if (intent?.action == Intent.ACTION_SCREEN_ON
-                && SharedPreferencesUtil.getData(Constant.LOCK_SCREEN, false) as Boolean
-                && !(context?.applicationContext as MusicApp).lockScreenVisible
+            if (intent.action == Intent.ACTION_SCREEN_ON
             ) {
-                context?.startActivity(Intent(context, LockScreenActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    addFlags(Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS)
-                })
+                releaseWakeLock()
+            } else if (intent.action == Intent.ACTION_SCREEN_OFF
+                && (context?.applicationContext as MusicApp).isPlaying
+            ) {
+                acquireWakeLock(context)
+            } else {
+                releaseWakeLock()
             }
+        }
+    }
+
+
+    fun releaseWakeLock() {
+        if (mWakeLock != null) {
+            Log.e(
+                "===",
+                "mWakeLock!!.release()\n"
+            )
+            mWakeLock!!.release()
+            mWakeLock = null
+        }
+    }
+
+    @SuppressLint("InvalidWakeLockTag")
+    private fun acquireWakeLock(context: Context?) {
+        if (context == null) {
+            return
+        }
+        if (mWakeLock == null) {
+            val pm: PowerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+            mWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "PlaySrvice")
+            if (mWakeLock != null) {
+                mWakeLock!!.acquire()
+                Log.e(
+                    "===",
+                    "lacquireWakeLock"
+                )
+            }
+        } else {
+            releaseWakeLock()
         }
     }
 }

@@ -56,6 +56,8 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
     var playerRecordInfo: PlayerRecordInfo? = null
     var isShowTime = true
 
+    var enableSeekBar = true
+
     private lateinit var mediaId: String
 
     private var updatePosition = true
@@ -178,7 +180,7 @@ class MusicViewModel(application: Application) : BaseViewModel(application) {
                     val item = queue[0].description.extras!!
                     showPlayerRecord(PlayerRecordInfo().apply {
                         musicId = item.getInt(IntentKey.PLAYER_RECORD_MUSICID_INT)
-                        progress = item.getLong(IntentKey.PLAYER_RECORD_PROGRESS_LONG)
+                        if (enableSeekBar) progress = item.getLong(IntentKey.PLAYER_RECORD_PROGRESS_LONG)
                         formId = item.getInt(IntentKey.PLAYER_RECORD_FORMID_INT)
                         musicName = queue[0].description.title.toString()
                         formName = queue[0].description.subtitle.toString()

@@ -13,6 +13,9 @@ class MusicApp : Application() {
 //    var activitycount = 0
 
     var lockScreenVisible = false
+    var isPlaying = false
+
+
     @Inject
     lateinit var database: MusicDatabase
 

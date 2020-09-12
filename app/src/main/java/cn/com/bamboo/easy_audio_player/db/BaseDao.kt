@@ -7,7 +7,7 @@ import androidx.room.Update
 
 
 @Dao
-interface BaseDao<T> {
+open interface BaseDao<T> {
     //插入单条数据
     @Insert
     fun insertItem(t: T)

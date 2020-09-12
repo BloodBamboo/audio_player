@@ -33,13 +33,14 @@ class MusicService : MediaBrowserServiceCompat() {
     private var audioHelp: AudioHelp = AudioHelp(AudioHelpCallback())
     private lateinit var musicProvider: MusicProvider
     private lateinit var mediaSessionCompat: MediaSessionCompat
+
     //    private var formList: List<MusicForm>? = null
     private var musicList: List<Music>? = null
     private lateinit var becomingNoisyReceiver: BecomingNoisyReceiver
     private lateinit var notificationManager: NotificationManagerCompat
     private lateinit var notificationBuilder: ControlNotificationBuilder
+    private lateinit var unLockScreenReceiver: UnLockScreenReceiver
     private lateinit var lockScreenReceiver: LockScreenReceiver
-
     protected lateinit var mediaController: MediaControllerCompat
     protected lateinit var am: AudioManager
     private val timingUtil: TimingUtil = TimingUtil()
@@ -82,20 +83,37 @@ class MusicService : MediaBrowserServiceCompat() {
 
         becomingNoisyReceiver =
             BecomingNoisyReceiver(context = this, sessionToken = mediaSessionCompat.sessionToken)
-        lockScreenReceiver = LockScreenReceiver()
+        unLockScreenReceiver = UnLockScreenReceiver()
         val intentFilter = IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_USER_PRESENT)
         }
-        registerReceiver(lockScreenReceiver, intentFilter)
+        registerReceiver(unLockScreenReceiver, intentFilter)
+
+        lockScreenReceiver = LockScreenReceiver()
+        val intentFilter2 = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_OFF)
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_USER_PRESENT)
+        }
+        registerReceiver(lockScreenReceiver, intentFilter2)
     }
 
+//    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+//        return START_STICKY
+//    }
+
     override fun onDestroy() {
+        (applicationContext as MusicApp).isPlaying = false
         super.onDestroy()
         timingUtil.onDestroy()
         Log.e("===", "service_onDestroy")
         saveCurrentPlayer()
+        unLockScreenReceiver?.let {
+            unregisterReceiver(it)
+        }
         lockScreenReceiver?.let {
+            it.releaseWakeLock()
             unregisterReceiver(it)
         }
 
@@ -141,7 +159,7 @@ class MusicService : MediaBrowserServiceCompat() {
         }
     }
 
-    private inner class SessionCallback: MediaSessionCompat.Callback() {
+    private inner class SessionCallback : MediaSessionCompat.Callback() {
         override fun onSkipToQueueItem(id: Long) {
             playItem(id)
         }
@@ -196,11 +214,14 @@ class MusicService : MediaBrowserServiceCompat() {
         override fun onStop() {
             player.pause()
             saveCurrentPlayer()
+            lockScreenReceiver?.let {
+                it.releaseWakeLock()
+            }
             mediaSessionCompat.setPlaybackState(
-                    getPlaybackStateCompat(
-                        mapPlaybackState(player.getState()),
-                        player.getCurrentPosition()
-                    )
+                getPlaybackStateCompat(
+                    mapPlaybackState(player.getState()),
+                    player.getCurrentPosition()
+                )
             )
         }
 
@@ -209,23 +230,26 @@ class MusicService : MediaBrowserServiceCompat() {
             val keyEvent = mediaButtonEvent?.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT)
             if (keyEvent != null && keyEvent.action == KeyEvent.ACTION_DOWN) {
                 when (keyEvent.keyCode) {
-                    KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {onPause()
-                        return true}
-                    KeyEvent.KEYCODE_MEDIA_NEXT -> {onSkipToNext()
+                    KeyEvent.KEYCODE_MEDIA_PLAY, KeyEvent.KEYCODE_MEDIA_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+                        onPause()
+                        return true
+                    }
+                    KeyEvent.KEYCODE_MEDIA_NEXT -> {
+                        onSkipToNext()
                         return true
                     }
                     KeyEvent.KEYCODE_MEDIA_PREVIOUS -> {
                         onSkipToPrevious()
                         return true
                     }
-                    KeyEvent.KEYCODE_MEDIA_STOP ->{
+                    KeyEvent.KEYCODE_MEDIA_STOP -> {
                         onStop()
                         return true
                     }
                 }
             }
 
-           return super.onMediaButtonEvent(mediaButtonEvent)
+            return super.onMediaButtonEvent(mediaButtonEvent)
         }
 
         override fun onCustomAction(action: String?, extras: Bundle?) {
@@ -318,12 +342,15 @@ class MusicService : MediaBrowserServiceCompat() {
 
                 IntentKey.LOAD_PLAYER_RECORD -> {
                     musicProvider.getPlayerRecordList {
-                        val children = it?.mapIndexed { idx,item ->
+                        val children = it?.mapIndexed { idx, item ->
                             val extras = Bundle()
                             extras.putInt(IntentKey.QUEUE_TYPE, 2)
                             extras.putInt(IntentKey.PLAYER_RECORD_FORMID_INT, item.formId)
                             extras.putInt(IntentKey.PLAYER_RECORD_MUSICID_INT, item.musicId)
-                            extras.putString(IntentKey.PLAYER_RECORD_DESCRIPTION_STRING, item.description)
+                            extras.putString(
+                                IntentKey.PLAYER_RECORD_DESCRIPTION_STRING,
+                                item.description
+                            )
                             extras.putLong(IntentKey.PLAYER_RECORD_PROGRESS_LONG, item.progress)
                             extras.putLong(IntentKey.PLAYER_RECORD_RECORDTIME_LONG, item.recordTime)
                             var temp = MediaDescriptionCompat.Builder()
@@ -378,6 +405,7 @@ class MusicService : MediaBrowserServiceCompat() {
 
     private fun playMusic() {
         Log.e("===", "playMusic")
+        (applicationContext as MusicApp).isPlaying = true
         player.play()
         mediaSessionCompat.setPlaybackState(
             getPlaybackStateCompat(
@@ -389,6 +417,7 @@ class MusicService : MediaBrowserServiceCompat() {
     }
 
     private fun pauseMusicAndSaveInfo() {
+        (applicationContext as MusicApp).isPlaying = false
         player.pause()
         giveUpAudioFocus()
         saveCurrentPlayer()
@@ -439,10 +468,11 @@ class MusicService : MediaBrowserServiceCompat() {
      */
     private fun tryToGetAudioFocus() {
         var result =
-        am.requestAudioFocus(
-            audioHelp.audioFocusChangeListener,//状态监听器
-            AudioManager.STREAM_MUSIC,//
-            AudioManager.AUDIOFOCUS_GAIN);
+            am.requestAudioFocus(
+                audioHelp.audioFocusChangeListener,//状态监听器
+                AudioManager.STREAM_MUSIC,//
+                AudioManager.AUDIOFOCUS_GAIN
+            );
         if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
             audioHelp.currentAudioFocusState = AudioHelp.AUDIO_FOCUSED;
         } else {
@@ -456,7 +486,8 @@ class MusicService : MediaBrowserServiceCompat() {
     private fun giveUpAudioFocus() {
         //申请放弃音频焦点
         if (am.abandonAudioFocus(audioHelp.audioFocusChangeListener)
-            == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            == AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        ) {
             //AudioManager.AUDIOFOCUS_REQUEST_GRANTED 申请成功
             audioHelp.currentAudioFocusState = AudioHelp.AUDIO_NO_FOCUS_NO_DUCK;
         }

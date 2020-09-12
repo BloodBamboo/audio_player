@@ -24,7 +24,8 @@ class MainActivity : BaseKotlinActivity() {
         //权限申请
         Permission4MultipleHelp.request(this, arrayOf(
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            Manifest.permission.READ_EXTERNAL_STORAGE
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WAKE_LOCK
         ), success = {
         }, fail = { toast("请开启读写权限") })
         designNavigationView.setOnNavigationItemSelectedListener {
